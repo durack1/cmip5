@@ -197,6 +197,28 @@ else:
     all_files = False
     all_realms = False
 
+'''
+## TEST ##
+all_files = False
+all_realms = False
+
+model_suite = 'cmip5'
+experiment = 'historical'
+realm = 'ocn'
+variable = 'so'
+drift = 'nodriftcorrect'
+driftcorrect = False
+
+experiment = 'rcp85'
+variable = 'thetao'
+
+model_suite = 'cmip3'
+experiment = '20c3m'
+realm = 'atm'
+variable = 'tas'
+driftcorrect = 'False'
+'''
+
 # Set host information and directories
 host_name = gethostname()
 if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
@@ -223,28 +245,6 @@ logfile = os.path.join(host_path,'tmp',"".join([time_format,'_make_',model_suite
 writeToLog(logfile,"".join(['TIME: ',time_format]))
 writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
 del(time_format,time_now) ; gc.collect()
-
-'''
-## TEST ##
-all_files = False
-all_realms = False
-
-model_suite = 'cmip5'
-experiment = 'historical'
-realm = 'ocn'
-variable = 'so'
-drift = 'nodriftcorrect'
-driftcorrect = False
-
-experiment = 'rcp85'
-variable = 'thetao'
-
-model_suite = 'cmip3'
-experiment = '20c3m'
-realm = 'atm'
-variable = 'tas'
-driftcorrect = 'False'
-'''
 
 # Get list of infiles (*.nc) and 3D (*.xml)
 if all_files and all_realms:
@@ -345,7 +345,7 @@ writeToLog(logfile,"** Generating new *.nc files **")
 # 130812 - 117 - cmip5.EC-EARTH.historical.r13i1p1.an.ocn.so.ver-v20120503.1850-1915.xml
 # 130820 - 295 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.so.ver-1.1850-2005.xml
 # 130820 - 313 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.thetao.ver-1.1850-2005.xml
-for filecount,l in enumerate(filelist):
+for filecount,l in enumerate(filelist[0:1]):
     filecount_s = '%06d' % (filecount+1)
     print "".join(['** Processing: ',filecount_s,' ',replace(l,'/work/durack1/Shared/',''),' **'])
     var     = l.split('/')[8] ; # Get variable name from filename
@@ -369,7 +369,7 @@ for filecount,l in enumerate(filelist):
         d = f_in(var)
         # Check units and correct in case of salinity
         if var == 'so' or var == 'sos':
-            [d,_] = fixVarUnits(d,var,True)
+            [d,_] = fixVarUnits(d,var,report=True)
 
         # Create ~50-yr linear trend - with period dependent on experiment
         (slope),(slope_err) = linearregression(fixInterpAxis(d),error=1,nointercept=1)
@@ -407,7 +407,7 @@ for filecount,l in enumerate(filelist):
         
             # Check units and correct in case of salinity
             if var == 'so' or var == 'sos':
-                [d,_] = fixVarUnits(d,var,True)
+                [d,_] = fixVarUnits(d,var,report=True)
             
             (slope),(slope_err) = linearregression(fixInterpAxis(d),error=1,nointercept=1)
             # Inflate slope from single year to length of record
@@ -656,7 +656,7 @@ for filecount,l in enumerate(filelist):
             d = f_in(var,time=(start_yr,end_yr,"con"))
             # Check units and correct in case of salinity
             if var == 'so' or var == 'sos':
-                [d,_] = fixVarUnits(d,var,True)
+                [d,_] = fixVarUnits(d,var,report=True)
 
             # Create ~50-yr linear trend - with period dependent on experiment
             (slope),(slope_err) = linearregression(fixInterpAxis(d),error=1,nointercept=1)
