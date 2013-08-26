@@ -1,3 +1,4 @@
+#!/bin/env python
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jan 23 09:40:47 2012
@@ -235,17 +236,31 @@ PJD 10 May 2013     - Added fix for issue with verbose stderr output being logge
 PJD 11 May 2013     - Added further tweaks to reduce verbosity of logs
 PJD 19 May 2013     - Even more tweaks to reduce verbosity of logs, str.find failures return -1 which is the lowest index
 PJD 27 May 2013     - Added further tweaks to reduce log verbosity - this time due to inconsistent error messages for cdscan type 2 error
+PJD  5 Jun 2013     - Corrected parsing of data_outfiles following code tweak
+PJD  6 Jun 2013     - Added test_latest def - validating this now - as nc file is opened 0-files will cause abort, so should reduce cdscan 0-file warnings
+                      It appears 6-concurrent jobs are not testing this at all, increase 2x by increasing calls to pathToFile
+                      Job bombed somewhere with nondescript error about urllib connection - internal error with esgquery_index? - see 130607_esgquery_index_crash.txt
+                      for partial log info - attempt to rerun after xmls are recreated
 PJD 13 Jun 2013     - Added permissions wash for */*/mo and */fx subdirs (issue only on oceanonly)
 PJD 24 Jun 2013     - Added tsl to land variable list
-PJD 24 Jun 2013     - TODO: Report new runtimeError in cdscan - problems with overlapping times, issue in combineKeys function - Report to Jeff/Charles
-PJD 24 Jun 2013     - TODO: Add test_latest def which needs filling out and testing
-PJD 24 Jun 2013     - TODO: Added demo code from Charles to convert processes and queues into lists of objects thereby subverting hard-coding and parallel limits
-PJD 24 Jun 2013     - TODO: update for gdo2_data (~8k; 2.2hrs) and css02_scratch (~25k; 7hrs) to scour using multiple threads each - what is the IO vs wait difference?
+PJD 24 Jul 2013     - Added sysCallTimeout function - possibly move to durolib
+PJD 26 Aug 2013     - Added shebang
+PJD 26 Aug 2013     - Removed atm_vars2 variable included in atm_vars and cleaned up code
+                    - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
+                    sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
+                    - TODO: Add model masternodes
+                    - TODO: Fix issue with no valid files being recorded
+                    - TODO: Add permissions wash over new xml files once copied in place (only an issue on oceanonly)
+                    - TODO: Placing read test in pathToFile will trim out issues with 0-sized files and read permissions, so reporting may need to be relocated
+                    - TODO: Add counters for lat1 vs lat0
+                    - TODO: Report new runtimeError in cdscan - problems with overlapping times, issue in combineKeys function - Report to Jeff/Charles
+                    - TODO: Added demo code from Charles to convert processes and queues into lists of objects thereby subverting hard-coding and parallel limits
+                    - TODO: update for gdo2_data (~8k; 2.2hrs) and css02_scratch (~25k; 7hrs) to scour using multiple threads each - what is the IO vs wait difference?
                       consider using multiprocess.pool to achieve this, so full loads until job(s) are completed
-PJD 24 Jun 2013     - TODO: Consider using multiprocess.pool (which loads up processes concurrently) rather than multiprocess.Process
-PJD 24 Jun 2013     - TODO: Consider adding a ./running file with 0/1 binary for new job to poll before it begins - overruns are a continuing issue
+                    - TODO: Consider using multiprocess.pool (which loads up processes concurrently) rather than multiprocess.Process
+                    - TODO: Consider adding a ./running file with 0/1 binary for new job to poll before it begins - overruns are a continuing issue
                       Ensure this file contains the PID of the parent process, so this can be checked for life before attempting to move mo_new to mo dirs
-PJD 24 Jun 2013     - TODO: Fix duplicate versions - add flag for latest or deprecated - awaiting Bob to create index file as esgquery_index wont cope with 40k queries
+                    - TODO: Fix duplicate versions - add flag for latest or deprecated - awaiting Bob to create index file as esgquery_index wont cope with 40k queries
                     Conditionally purge xmls with earlier version number (should sort so last generated file is latest)
                     [durack1@crunchy output1]$ pwd
                     /cmip5_gdo2/data/cmip5/output1
@@ -260,11 +275,13 @@ PJD 24 Jun 2013     - TODO: Fix duplicate versions - add flag for latest or depr
 @author: durack1
 """
 
-import os,sys,datetime,time,glob,gc,argparse,subprocess,shlex,pickle,errno
-from socket import gethostname
+import argparse,datetime,errno,gc,glob,os,pickle,shlex,subprocess,sys,time
+import cdms2 as cdms
+from durolib import writeToLog
 from multiprocessing import Process,Manager
-from subprocess import Popen,PIPE
+from socket import gethostname
 from string import replace
+from subprocess import Popen,PIPE
 
 # Cleanup interactive/spyder sessions
 if 'e' in locals():
@@ -305,10 +322,10 @@ host_name = gethostname()
 if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
     trim_host = replace(host_name,'.llnl.gov','')
     if batch:
-        host_path = '/work/cmip5/' ; # BATCH MODE - crunchy 120916
+        host_path = '/work/cmip5/' ; # BATCH MODE - oceanonly 130605
         log_path = os.path.join(host_path,'_logs')
     else:
-        host_path = '/work/durack1/Shared/cmip5/tmp/' ; # WORK_MODE_TEST - crunchy 130225 #TEST#
+        host_path = '/work/durack1/Shared/cmip5/tmp/' ; # WORK_MODE_TEST - oceanonly 130605 #TEST#
         log_path = os.path.join(host_path)        
     cdat_path = '/usr/local/uvcdat/latest/bin/'
 else:
@@ -323,17 +340,14 @@ time_now = datetime.datetime.now()
 time_format = time_now.strftime("%y%m%d_%H%M%S")
 pypid = str(os.getpid()) ; # Returns calling python instance, so master also see os.getppid() - Parent
 logfile = os.path.join(log_path,"".join([time_format,'_make_cmip5_xml-',trim_host,'-threads',str(threadCount),'-PID',pypid,'.log']))
-# Create logfile
-logfile_handle = open(logfile,'w')
 # Logging the explicit data path that is being searched
 os.chdir('/cmip5_gdo2')
 cmd = 'df -h | grep cmip5'
 p = Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE)
 out,err = p.communicate()
-logfile_handle.write("".join(['TIME: ',time_format,'\n']))
-logfile_handle.write("".join(['HOSTNAME: ',host_name,'\n']))
-logfile_handle.write("".join(['SOURCEFILES:\n',out]))
-logfile_handle.close()
+writeToLog(logfile,"".join(['TIME: ',time_format,'\n']))
+writeToLog(logfile,"".join(['HOSTNAME: ',host_name,'\n']))
+writeToLog(logfile,"".join(['SOURCEFILES:\n',out]))
 del(trim_host,time_now,time_format,cmd,p,out,err)
 gc.collect()
 
@@ -347,8 +361,25 @@ def mkdirs(newdir,mode=0777):
         if err.errno != errno.EEXIST or not os.path.isdir(newdir):
             raise
 
+def sysCallTimeout(cmd,timeout):
+    start = time.time()
+    p = Popen(cmd)
+    while time.time() - start < timeout:
+        if p.poll() is not None:
+            return
+        time.sleep(0.1)
+    p.kill()
+    raise OSError('System call timed out')
 
+
+# Debug code for duplicate removal/checking
+#import os,pickle
+#picklefile = '/work/cmip5/_logs/130531_181358_list_outfiles.pickle'
+#f = open(picklefile,'r')
+#outfiles,outfiles_new,outfiles_paths,outfiles_paths_new = pickle.load(f)
+#f.close()
 def pathToFile(inpath,start_time,queue1):
+#def pathToFile(inpath,start_time): ; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
     exclude_dir = '-will-delete' ; # Must be string in current syntax  
     for (path,dirs,files) in os.walk(inpath,'false'):
@@ -362,24 +393,24 @@ def pathToFile(inpath,start_time,queue1):
     # Create variable and realm names
     experiments = ['1pctCO2','abrupt4xCO2','amip','historical','historicalExt','historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
     temporal    = ['fx','mon'] ; # For months and fixed fields only
-    atm_vars    = ['clisccp','clt','evspsbl','hfls','hfss','hur','hurs','hus','huss','pr','prw','ps','psl','rlut','rlutcs',
-                   'rsdscs','rsuscs','rsut','rsutcs','ta','tas','tasmax','tasmin','ts','ua','va'] ; atm_vars.sort()
-    atm_vars2   = ['cl','cli','clivi','clw','clwvi','mc','prc','prsn','rlds','rldscs','rlus',
-                   'rsds','rsdt','rsus','sbl','sci','sfcWind','tauu','tauv','uas','vas','wap','zg'] ; atm_vars2.sort()
+    atm_vars    = ['cl','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
+                   'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rlut',
+                   'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
+                   'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
     atmOrocn    = ['atm','ocn'] ; atmOrocn.sort()
     fx_vars     = ['areacella','areacello','basin','deptho','orog','sftlf','sftof','volcello'] ; fx_vars.sort()
     land_vars   = ['mrro','mrros','tsl'] ; land_vars.sort()
     ocn_vars    = ['agessc','cfc11','evs','ficeberg','friver','mfo','mlotst','omlmax','rhopoto','sfriver','so','soga','sos',
                    'thetao','thetaoga','tos','uo','vo','vsf','vsfcorr','vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
     seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
-    len_vars    = len(atm_vars)+len(atm_vars2)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
+    len_vars    = len(atm_vars)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
     
     # Check for valid outputs
     if not data_paths:
         #print "** No valid data found on path.. **"
         # Create timestamp as function completes
         time_since_start = time.time() - start_time
-        #return ['','',time_since_start,i1,0,len_vars] ; Non-parallel version of code
+        #return('','',time_since_start,i1,0,len_vars) ; # Non-parallel version of code for testing
         queue1.put_nowait(['','',time_since_start,i1,0,len_vars]) ; # Queue
         return
     
@@ -406,24 +437,46 @@ def pathToFile(inpath,start_time,queue1):
             elif path_bits[2] in 'data':
                 version     = path_bits[13]
                 variable    = path_bits[12]
+            # Getting versioning/latest info
+            print 'path read'
+            testfile = os.listdir(path)[0]
+            print "".join(['file found: ',testfile])            
+            # Test for zero-size file before trying to open
+            print os.path.join(path,testfile)
+            fileinfo = os.stat(os.path.join(path,testfile))
+            print 'fileinfo ok'
+            checksize = fileinfo.st_size
+            print 'checksize ok'
+            if checksize == 0:
+                print "".join(['Zero-sized file: ',path])
+                continue
+            # Read access check
+            if os.access(os.path.join(inpath,testfile),os.R_OK) != True:
+                print "".join(['No read permissions: ',path])
+                continue
+            f_h = cdms.open(os.path.join(path,testfile))
+            tracking_id     = f_h.tracking_id
+            creation_date   = f_h.creation_date
+            f_h.close()
+            if test_latest(tracking_id,creation_date):
+                lateststr = '' ; # Placeholder                
+                lateststr = 'lat1' ; # Latest
+            else:
+                lateststr = 'lat0' ; # Not latest
         except:
             print "".join(['Error indexing path: ',path])
             continue
         # Test for list entry and trim experiments and variables to manageable list
-        if ( (experiment == 'historical') or (experiment == 'amip') ) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars2) ):
-            #                                      cmip3.bccr_bcm2_0.sresa1b.run1.mo.pr.xml
-            data_outfiles.insert(i2,"".join(['cmip5.',model,'.',experiment,'.',realisation,'.',time_ax,'.',realm,'.',tableId,'.',variable,'.ver-',version,'.xml']))
-            data_outfiles_paths.insert(i2,path)
-            i2 = i2 + 1    
-        elif (experiment in experiments) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars) or (variable in seaIce_vars) or (variable in land_vars) or (variable in fx_vars) ):
-            data_outfiles.insert(i2,"".join(['cmip5.',model,'.',experiment,'.',realisation,'.',time_ax,'.',realm,'.',tableId,'.',variable,'.ver-',version,'.xml']))
+        if (experiment in experiments) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars) or (variable in seaIce_vars) or (variable in land_vars) or (variable in fx_vars) ):
+            #data_outfiles.insert(i2,".".join(['cmip5',model,experiment,realisation,time_ax,realm,tableId,variable,'ver-',version,'xml']))
+            data_outfiles.insert(i2,".".join(['cmip5',model,experiment,realisation,time_ax,realm,tableId,variable,"".join(['ver-',version]),lateststr,'xml']))
             data_outfiles_paths.insert(i2,path)
             i2 = i2 + 1
-        
+    
     # Create timestamp as function completes
     time_since_start = time.time() - start_time
     
-    #return [data_outfiles,data_outfiles_paths,i1,i2,len_vars] ; Non-parallel version of code
+    #return(data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars) ; # Non-parallel version of code for testing
     queue1.put_nowait([data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars]) ; # Queue
     return
 
@@ -432,9 +485,7 @@ def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     outfile_count = len(data_outfiles)
     time_since_start_s = '%09.2f' % time_since_start
     print "".join([path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',str(outfile_count).ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)'])
-    logfile_handle = open(logfile,'a')
-    logfile_handle.write("".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)\n']))
-    logfile_handle.close()
+    writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)\n']))
     return
 
 
@@ -476,11 +527,11 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     
     # Generate xml file - and preallocate error codes
     fileWarning = False
-    errorCode = ''
+    errorCode   = ''
     fileNoWrite = False
-    fileNoRead = False
-    fileZero = False
-    fileNone = False
+    fileNoRead  = False
+    fileZero    = False
+    fileNone    = False
     if len(infilenames) != 0:
         # Create a fullpath list of bad files and exclude these, by trimming them out of a filename list
         cmd = "".join([cdat_path,'cdscan -x ',outfileName,' ',os.path.join(inpath,'*.nc')])
@@ -528,13 +579,12 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     # Create timestamp as function completes
     time_since_start = time.time() - start_time
             
-    #return [zeroFiles,warningFiles,noReadFiles,noWriteFiles] ; Non-parallel version of code
+    #return(inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start) ; Non-parallel version of code
     queue1.put_nowait([inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start]) ; # Queue
     return
 
 
 def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCode,inpath,outfileName,time_since_start,i,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood):
-    logfile_handle = open(logfile,'a')
     time_since_start_s = '%09.2f' % time_since_start
     logtime_now = datetime.datetime.now()
     logtime_format = logtime_now.strftime("%y%m%d_%H%M%S")
@@ -544,8 +594,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 1 (cdscan error - zero infile size) indexing '
         else:
             err_text = ' PROBLEM 1 (cdscan error - zero infile size) indexing '
-        logfile_handle.write("".join(['** ',format(xmlBad1,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
-        logfile_handle.close()
+        writeToLog(logFile,"".join(['** ',format(xmlBad1,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad1 = xmlBad1 + 1;
@@ -558,8 +607,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = "".join([' DATA PROBLEM 2 (cdscan error- \'',errorCode,'\') indexing '])
         else:
             err_text = "".join([' PROBLEM 2 (cdscan error - \'',errorCode,'\') indexing '])
-        logfile_handle.write("".join(['** ',format(xmlBad2,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
-        logfile_handle.close()
+        writeToLog(logFile,"".join(['** ',format(xmlBad2,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad2 = xmlBad2 + 1;
@@ -572,8 +620,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 3 (read perms) indexing '
         else:
             err_text = ' PROBLEM 3 (read perms) indexing '
-        logfile_handle.write("".join(['** ',format(xmlBad3,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
-        logfile_handle.close()
+        writeToLog(logFile,"".join(['** ',format(xmlBad3,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad3 = xmlBad3 + 1;
@@ -586,8 +633,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 4 (no outfile) indexing '
         else:
             err_text = ' PROBLEM 4 (no outfile) indexing '
-        logfile_handle.write("".join(['** ',format(xmlBad4,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
-        logfile_handle.close()
+        writeToLog(logFile,"".join(['** ',format(xmlBad4,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad4 = xmlBad4 + 1;
@@ -600,8 +646,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 5 (no infiles) indexing '
         else:
             err_text = ' PROBLEM 5 (no infiles) indexing '
-        logfile_handle.write("".join(['** ',format(xmlBad5,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
-        logfile_handle.close()
+        writeToLog(logFile,"".join(['** ',format(xmlBad5,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad5 = xmlBad5 + 1;
@@ -609,8 +654,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
         if os.path.isfile(outfileName):
             os.remove(outfileName)
     else:
-        logfile_handle.write("".join(['** ',format(xmlGood,"07d"),' ',logtime_format,' ',time_since_start_s,'s success creating: ',outfileName,' **\n']))
-        logfile_handle.close()
+        writeToLog(logFile,"".join(['** ',format(xmlGood,"07d"),' ',logtime_format,' ',time_since_start_s,'s success creating: ',outfileName,' **\n']))
         xmlGood = xmlGood + 1;
     
     return[xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood] # ; Non-parallel version of code
@@ -619,6 +663,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
 
 
 def test_latest(tracking_id,creation_date):
+    # There is a need to map models (rather than institutes) to index nodes as NSF-DOE-NCAR has multiple index nodes according to Karl T    
+    # User cmip5_controlled_vocab.txt file: http://esg-pcmdi.llnl.gov/internal/esg-data-node-documentation/cmip5_controlled_vocab.txt
     # This maps institute_id => (data_node, index_node)
     # where data_node is the originator of the data, and index_node is where they publish to.
     instituteDnodeMap = {
@@ -663,8 +709,22 @@ def test_latest(tracking_id,creation_date):
         'esgf.nccs.nasa.gov',
         'pcmdi9.llnl.gov',
     }
-    print('latest test')
+    modelInstituteMap = {
+        'access1-0','CSIRO-BOM',
+        'access1-3','CSIRO-BOM',
+        'bcc-csm1-1','BCC',
+        'noresm-l','NCC',
+    }
+    #cmd = ''.join(['/work/durack1/Shared/cmip5/esgquery_index.py --type f -t tracking_id:',tracking_id,' -q latest=true --fields latest'])
+    # try esgquery_index --type f -t tracking_id='tracking_id',latest=true,index_node='index_node' ; # Uncertain if index_node is available
+    #tmp = os.popen(cmd).readlines()
+    #time.sleep(1) ; # Pause
+    #latestbool = False
+    #for t in tmp:
+    #    if find(t,'latest'):
+    #        latestbool = True
     latestbool = True
+    
     return latestbool
 
 
@@ -863,9 +923,7 @@ if make_xml:
     xml_count2 = len(o)
     xml_count = int(xml_count1)+int(xml_count2);
     print "".join(['** Updating ',format(xml_count,"1d"),' existing *.xml files **'])
-    logfile_handle = open(logfile,'a')
-    logfile_handle.write("".join(['** Updating ',format(xml_count,"1d"),' existing *.xml files **\n']))
-    logfile_handle.close()
+    writeToLog(logfile,"".join(['** Updating ',format(xml_count,"1d"),' existing *.xml files **\n']))
     # Catch errors with system commands
     cmd = "".join(['rm -rf ',host_path,'*/*/mo_new'])
     fnull = open(os.devnull,'w')
@@ -876,9 +934,7 @@ if make_xml:
     p = subprocess.call(cmd,stdout=fnull,shell=True)
     fnull.close() 
     print "** Generating new *.xml files **"
-    logfile_handle = open(logfile,'a')
-    logfile_handle.write("** Generating new *.xml files **\n")
-    logfile_handle.close()
+    writeToLog(logfile,"** Generating new *.xml files **\n")
     i = 0
 
     # Loop through all inpaths and outfiles
@@ -969,11 +1025,9 @@ if make_xml:
     print "".join(['** Complete for \'data\' & \'scratch\' sources; Total outfiles: ',format(len(outfiles),"01d"),' **'])
     print "".join(['** XML file count - Good: ',format(xmlGood-1,"1d"),' **'])
     print "".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d")])
-    logfile_handle = open(logfile,'a')
-    logfile_handle.write("".join(['** make_cmip5_xml.py complete for \'data\' & \'scratch\' sources; Total outfiles: ',format(len(outfiles),"01d"),' **\n']))
-    logfile_handle.write("".join(['** XML file count - Good: ',format(xmlGood-1,"1d"),' **\n']))
-    logfile_handle.write("".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d"),' **\n']))
-    logfile_handle.close()
+    writeToLog(logfile,"".join(['** make_cmip5_xml.py complete for \'data\' & \'scratch\' sources; Total outfiles: ',format(len(outfiles),"01d"),' **\n']))
+    writeToLog(logfile,"".join(['** XML file count - Good: ',format(xmlGood-1,"1d"),' **\n']))
+    writeToLog(logfile,"".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d"),' **\n']))
 
     # Once run is complete, and xmlGood > 50k, archive old files and move new files into place
     if xmlGood > 40000:
@@ -1024,17 +1078,11 @@ if make_xml:
         #[durack1@crunchy cmip5]$ ls -d1 */*/mo_new | sed -e 'p;s/mo_new/mo/' | xargs -n 2 mv
         # Report migration success to prompt and log
         print "".join(['** Archive and migration complete from */*/*_new to */*/*, archive file: ',host_path,'_archive/',time_format,'_cmip5_xml.7z **'])
-        logfile_handle = open(logfile,'a')
-        logfile_handle.write("".join(['** Archive and migration complete from */*/*_new to */*/*,\n archive file: ',host_path,'_archive/',time_format,'_cmip5_xml.7z **']))
-        logfile_handle.close()
+        writeToLog(logfile,"".join(['** Archive and migration complete from */*/*_new to */*/*,\n archive file: ',host_path,'_archive/',time_format,'_cmip5_xml.7z **']))
     else:
         print "".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **'])
-        logfile_handle = open(logfile,'a')
-        logfile_handle.write("".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **']))
-        logfile_handle.close()
+        writeToLog(logfile,"".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **']))
         
 else:
     print "** make_cmip5_xml.py run in report mode **"
-    logfile_handle = open(logfile,'a')
-    logfile_handle.write("** make_cmip5_xml.py run in report mode **")
-    logfile_handle.close()
+    writeToLog(logfile,"** make_cmip5_xml.py run in report mode **")
