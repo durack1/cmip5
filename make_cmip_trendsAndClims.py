@@ -352,7 +352,7 @@ writeToLog(logfile,"** Generating new *.nc files **")
 # 130812 - 117 - cmip5.EC-EARTH.historical.r13i1p1.an.ocn.so.ver-v20120503.1850-1915.xml
 # 130820 - 295 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.so.ver-1.1850-2005.xml
 # 130820 - 313 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.thetao.ver-1.1850-2005.xml
-for filecount,l in enumerate(filelist[0:5]):
+for filecount,l in enumerate(filelist):
     filecount_s = '%06d' % (filecount+1)
     print "".join(['** Processing: ',filecount_s,' ',replace(l,'/work/durack1/Shared/',''),' **'])
     var     = l.split('/')[8] ; # Get variable name from filename
