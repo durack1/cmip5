@@ -276,7 +276,7 @@ PJD 26 Aug 2013     - Removed atm_vars2 variable included in atm_vars and cleane
 """
 
 import argparse,datetime,errno,gc,glob,os,pickle,shlex,subprocess,sys,time
-import cdms2 as cdms
+import cdms2 as cdm
 from durolib import writeToLog
 from multiprocessing import Process,Manager
 from socket import gethostname
@@ -326,7 +326,7 @@ if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
         log_path = os.path.join(host_path,'_logs')
     else:
         host_path = '/work/durack1/Shared/cmip5/tmp/' ; # WORK_MODE_TEST - oceanonly 130605 #TEST#
-        log_path = os.path.join(host_path)        
+        log_path = host_path
     cdat_path = '/usr/local/uvcdat/latest/bin/'
 else:
     print '** HOST UNKNOWN, aborting.. **'
@@ -438,29 +438,29 @@ def pathToFile(inpath,start_time,queue1):
                 version     = path_bits[13]
                 variable    = path_bits[12]
             # Getting versioning/latest info
-            print 'path read'
+            #print 'path read'
             testfile = os.listdir(path)[0]
-            print "".join(['file found: ',testfile])            
+            #print "".join(['file found: ',testfile])            
             # Test for zero-size file before trying to open
-            print os.path.join(path,testfile)
+            #print os.path.join(path,testfile)
             fileinfo = os.stat(os.path.join(path,testfile))
-            print 'fileinfo ok'
+            #print 'fileinfo ok'
             checksize = fileinfo.st_size
-            print 'checksize ok'
+            #print 'checksize ok'
             if checksize == 0:
-                print "".join(['Zero-sized file: ',path])
+                #print "".join(['Zero-sized file: ',path])
                 continue
             # Read access check
             if os.access(os.path.join(inpath,testfile),os.R_OK) != True:
-                print "".join(['No read permissions: ',path])
+                #print "".join(['No read permissions: ',path])
                 continue
-            f_h = cdms.open(os.path.join(path,testfile))
+            f_h = cdm.open(os.path.join(path,testfile))
             tracking_id     = f_h.tracking_id
             creation_date   = f_h.creation_date
             f_h.close()
             if test_latest(tracking_id,creation_date):
-                lateststr = '' ; # Placeholder                
-                lateststr = 'lat1' ; # Latest
+                lateststr = 'lat0' ; # Placeholder                
+                #lateststr = 'lat1' ; # Latest
             else:
                 lateststr = 'lat0' ; # Not latest
         except:
