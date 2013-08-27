@@ -1,3 +1,4 @@
+#!/bin/env python
 # -*- coding: utf-8 -*-
 """
 Created on Fri Jun 15 10:44:35 2012
@@ -17,7 +18,8 @@ PJD 19 Feb 2013     - General code tidyup following prompts from pyflakes and ro
 PJD  8 May 2013     - Added oceanonly to known host list and added replace loading from string module
 PJD 30 May 2013     - Updated counter from 50 to 250 as much larger number of files now exist ~3050
 PJD 13 Jun 2013     - Added permissions wash
-PJD 13 Jun 2013     - TODO: Figure out what code is purging historical+piControl/ocn/an/so+thetao/*.xml files
+PJD 26 Aug 2013     - Added shebang
+                    - TODO: Figure out what code is purging historical+piControl/ocn/an/so+thetao/*.xml files
 
 @author: durack1
 """
@@ -90,8 +92,7 @@ for l in list_an3D_data_paths:
     startyr     = min(years1)
     endyr       = max(years2)  
     outfilename     = "".join(['cmip5.',model,'.',experiment,'.',realisation,'.an.',realm,'.',variable,'.',version,'.',str(startyr),'-',str(endyr),'.xml'])
-    #print outfilename
-    #print years1,years2
+    #print outfilename,years1,years2
     outpath         = os.path.join(host_path,experiment,'ocn','an',variable)
     del(outfile_bits,experiment,variable,model,realisation,version,years1,years2,l2,startyr,endyr)
     gc.collect()
