@@ -391,7 +391,8 @@ def pathToFile(inpath,start_time,queue1):
             i1 = i1 + 1 ; # Increment counter
     
     # Create variable and realm names
-    experiments = ['1pctCO2','abrupt4xCO2','amip','historical','historicalExt','historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
+    experiments = ['1pctCO2','abrupt4xCO2','amip','historical','historicalExt','historicalGHG','historicalMisc',
+                   'historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
     temporal    = ['fx','mon'] ; # For months and fixed fields only
     atm_vars    = ['cl','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
                    'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rlut',
@@ -400,8 +401,9 @@ def pathToFile(inpath,start_time,queue1):
     atmOrocn    = ['atm','ocn'] ; atmOrocn.sort()
     fx_vars     = ['areacella','areacello','basin','deptho','orog','sftlf','sftof','volcello'] ; fx_vars.sort()
     land_vars   = ['mrro','mrros','tsl'] ; land_vars.sort()
-    ocn_vars    = ['agessc','cfc11','evs','ficeberg','friver','mfo','mlotst','omlmax','rhopoto','sfriver','so','soga','sos',
-                   'thetao','thetaoga','tos','uo','vo','vsf','vsfcorr','vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
+    ocn_vars    = ['agessc','cfc11','evs','ficeberg','friver','mfo','mlotst','omlmax','rhopoto','sfriver',
+                   'so','soga','sos','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr','vsfevap','vsfpr',
+                   'vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
     seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
     len_vars    = len(atm_vars)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
     
