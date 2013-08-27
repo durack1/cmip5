@@ -87,6 +87,8 @@ PJD 19 Aug 2013     - Added both cmip3 & 5 support to this script through argume
 PJD 19 Aug 2013     - Added driftcorrect argument
 PJD 26 Aug 2013     - Removed duplication between experiments
 PJD 26 Aug 2013     - Removed drift calculation from historical if statement so works with all experiments
+PJD 27 Aug 2013     - Added start/end year arguments
+PJD 27 Aug 2013     - Cleaned up some path issues and redirected output back to master dir (not tmp)
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -175,6 +177,18 @@ if (args.driftcorrect in ['True','False']):
         driftcorrect = False
 else:
    print "** Invalid arguments - no *.nc files will be written **"
+if args.start_yr in '' or args.end_yr in '':
+    print "** No valid start/end years specified - resetting to defaults **"
+    if args.experiment in ['historical','historicalGHG','historicalNat','20c3m']:
+        start_yr    = 1950
+        end_yr      = 1999
+    elif args.experiment in ['rcp26','rcp45','rcp60','rcp85','sresa1b','sresa2','sresb1']:
+        start_yr    = 2050
+        end_yr      = 2099
+else:
+    start_yr    = int(args.start_yr)
+    end_yr      = int(args.end_yr)
+    time_yrs    = "".join([str(start_yr),'-',str(end_yr)])
     
 # Now use provided args
 all_files = False
@@ -207,15 +221,18 @@ else:
 
 '''
 ## TEST ##
-all_files = False
-all_realms = False
+all_files       = False
+all_realms      = False
 
-model_suite = 'cmip5'
-experiment = 'historical'
-realm = 'ocn'
-variable = 'so'
-drift = 'nodriftcorrect'
-driftcorrect = False
+model_suite     = 'cmip5'
+experiment      = 'historical'
+realm           = 'ocn'
+variable        = 'so'
+drift           = 'nodriftcorrect'
+driftcorrect    = False
+start_yr        = 1950
+end_yr          = 1999
+time_yrs        = "".join([str(start_yr),'-',str(end_yr)])
 
 experiment = 'rcp85'
 variable = 'thetao'
@@ -246,8 +263,8 @@ else:
 # Set logfile attributes
 time_now = datetime.datetime.now()
 time_format = time_now.strftime("%y%m%d_%H%M%S")
-#logfile = os.path.join(host_path,"".join([time_format,'_make_',model_suite,'_trendsAndClims-',experiment,'-',realm,'-',variable,'-',trim_host,'.log']))
-logfile = os.path.join(host_path,'tmp',"".join([time_format,'_make_',model_suite,'_trendsAndClims-',experiment,'-',realm,'-',variable,'-',trim_host,'.log'])) ; ## TEST ##
+logfile = os.path.join(host_path,"".join([time_format,'_make_',model_suite,'_trendsAndClims-',experiment,'-',realm,'-',variable,'-',time_yrs,'-',trim_host,'.log']))
+#logfile = os.path.join(host_path,'tmp',"".join([time_format,'_make_',model_suite,'_trendsAndClims-',experiment,'-',realm,'-',variable,'-',time_yrs,'-',trim_host,'.log'])) ; ## TEST ##
 # Create logfile
 writeToLog(logfile,"".join(['TIME: ',time_format]))
 writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
@@ -314,11 +331,13 @@ if 'logfile' in locals():
 # Count and purge code
 # Deal with existing *.nc files
 if all_files:
-    ii,o,e = os.popen3("".join(['ls ',host_path,'*/*/an_trends/*/*.nc | wc -l']))
+    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,'*/*/an_trends',time_yrs,'*/*.nc'),' | wc -l']))
 elif all_realms:
-    ii,o,e = os.popen3("".join(['ls ',host_path,experiment,'/*/an_trends/*/*.nc | wc -l']))
+    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,experiment,'*/an_trends',time_yrs,'*/*.nc'),' | wc -l']))
+elif variable not in 'all':
+    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,experiment,'*/an_trends',time_yrs,variable,'*.nc'),' | wc -l']))
 else:
-    ii,o,e = os.popen3("".join(['ls ',host_path,experiment,realm,'/an_trends/*/*.nc | wc -l']))
+    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,'*/*.nc'),' | wc -l']))
 
 nc_count = o.read();
 print "".join(['** Purging ',nc_count.strip(),' existing *.nc files **'])
@@ -328,19 +347,15 @@ del(ii,o,e,nc_count) ; gc.collect()
 if all_files:
     cmd = "".join(['rm -f ',host_path,'*/*/an_trends/*/*.nc'])
 elif all_realms:
-    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,'*/an_trends/*/*.nc')])
-    #cmd = re.sub('/work/durack1/Shared/cmip5/','/work/durack1/Shared/cmip5/tmp/',cmd) ; ## TEST ##
-    cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
+    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,'*/an_trends',time_yrs,'*/*.nc')])
+    #cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
+elif variable not in 'all':
+    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,variable,'*.nc')])
 else:
-    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_trends/*/*.nc')])
-    #cmd = re.sub('/work/durack1/Shared/cmip5/','/work/durack1/Shared/cmip5/tmp/',cmd) ; ## TEST ##
-    cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
+    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,'*/*.nc')])
+    #cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
 # Catch errors with system commands
-
-
-#ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
-
-
+ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
 print "** *.nc files purged **"
 writeToLog(logfile,"** *.nc files purged **")
 print "** Generating new *.nc files **"
@@ -379,30 +394,30 @@ for filecount,l in enumerate(filelist):
         end_yr              = t.asComponentTime()[-1].year ; # End year
     elif experiment in {'historical','historicalGHG','historicalNat','20c3m'}:
         if model_suite in 'cmip3':            
-            start_yr        = cdt.comptime(1970) ; # Start year
-            drift_start_yr  = cdt.comptime(1900)
-            end_yr          = cdt.comptime(1999) ; # End year
-            drift_end_yr    = cdt.comptime(2049)
+            start_yr_ct         = cdt.comptime(start_yr) ; # Start year
+            drift_start_yr_ct   = cdt.comptime(1900)
+            end_yr_ct           = cdt.comptime(end_yr) ; # End year
+            drift_end_yr_ct     = cdt.comptime(2049)
         elif model_suite in 'cmip5':
-            start_yr        = cdt.comptime(1970) ; # Start year
-            drift_start_yr  = cdt.comptime(1905)
-            end_yr          = cdt.comptime(2004) ; # End year
-            drift_end_yr    = cdt.comptime(2055)
+            start_yr_ct         = cdt.comptime(start_yr) ; # Start year
+            drift_start_yr_ct   = cdt.comptime(1905)
+            end_yr_ct           = cdt.comptime(end_yr) ; # End year
+            drift_end_yr_ct     = cdt.comptime(2055)
     elif experiment in {'rcp26','rcp45','rcp60','rcp85','sresa1b','sresa2','sresb1'}:
-        start_yr            = cdt.comptime(2065) ; # Start year
-        end_yr              = cdt.comptime(2099) ; # End year        
+        start_yr_ct         = cdt.comptime(start_yr) ; # Start year
+        end_yr_ct           = cdt.comptime(end_yr) ; # End year        
 
     # Use time info
-    time_yrs        = "".join([str(start_yr.year),'-',str(end_yr.year)])
-    time_length     = str(end_yr.year-start_yr.year)
+    time_yrs        = "".join([str(start_yr_ct.year),'-',str(end_yr_ct.year)])
+    time_length     = str(end_yr_ct.year-start_yr_ct.year)
     outfile         = re.sub('[0-9]{4}-[0-9]{4}',"".join([time_yrs,'_ClimAndSlope']),l)
     outfile         = re.sub(".xml",".nc",outfile) ; # Correct for 3D an.xml files
-    outfile         = re.sub(host_path,os.path.join(host_path,'tmp/'),outfile) ; ## TEST ##
-    outfile         = re.sub('/an/',"".join(['/an_trends/',time_yrs,'/']),outfile) ; ## TEST ##
+    outfile         = re.sub('/an/',"".join(['/an_trends/',time_yrs,'/']),outfile)
+    #outfile         = re.sub(host_path,os.path.join(host_path,'tmp/'),outfile) ; ## TEST ##
         
     # Standard read
     try:
-        d = f_in(var,time=(start_yr,end_yr,'con'))
+        d = f_in(var,time=(start_yr_ct,end_yr_ct,'con'))
     except:
         logtime_now = datetime.datetime.now()
         logtime_format = logtime_now.strftime("%y%m%d_%H%M%S")
@@ -443,8 +458,8 @@ for filecount,l in enumerate(filelist):
                 # Determine start year of historical
                 an_start_year       = np.int(f_in.an_start_year)
                 # Determine offset from historical first/last years
-                offset_start        = drift_start_yr.year-an_start_year ; # Case ACCESS1-0 = 50
-                offset_end          = drift_end_yr.year-an_start_year ; # Case ACCESS1-0 = 200
+                offset_start        = drift_start_yr_ct.year-an_start_year ; # Case ACCESS1-0 = 50
+                offset_end          = drift_end_yr_ct.year-an_start_year ; # Case ACCESS1-0 = 200
                 # Start/end drift times
                 drift_start         = compt.add(offset_start,cdt.Year) ; # Add offsets to picontrol time
                 drift_end           = compt.add(offset_end,cdt.Year) ; # Add offsets to picontrol time
@@ -479,11 +494,11 @@ for filecount,l in enumerate(filelist):
                 picontrol_start_yr  = t.asComponentTime()[0].year
                 picontrol_end_yr    = t.asComponentTime()[-1].year
                 if drift_start.year < picontrol_start_yr:
-                    drift_start = cdt.comptime(picontrol_start_yr,1,1)
+                    drift_start     = cdt.comptime(picontrol_start_yr,1,1)
                 if drift_end.year > picontrol_end_yr:
-                    drift_end = cdt.comptime(picontrol_end_yr,12,31)
+                    drift_end       = cdt.comptime(picontrol_end_yr,12,31)
                 if drift_end.year-drift_start.year < 150:
-                    yr_count = drift_end.year-drift_start.year
+                    yr_count        = drift_end.year-drift_start.year
                     print "".join(['** Less than required 150-yrs: ',str(yr_count),' skipping model **'])
                     writeToLog(logfile,"".join(['** Less than required 150-yrs: ',str(yr_count),' skipping model **']))
                     trip_try #continue
