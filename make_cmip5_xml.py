@@ -247,7 +247,7 @@ PJD 24 Jul 2013     - Added sysCallTimeout function - possibly move to durolib
 PJD 26 Aug 2013     - Added shebang
 PJD 26 Aug 2013     - Removed atm_vars2 variable included in atm_vars and cleaned up code
 PJD 27 Aug 2013     - Cleaned up issues with latest code checks
-PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from files to speed up processing
+PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from files to speed up processing - speed up ~4x
                     - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     - TODO: Add model masternodes
