@@ -367,6 +367,7 @@ writeToLog(logfile,"** Generating new *.nc files **")
 # 130812 - 117 - cmip5.EC-EARTH.historical.r13i1p1.an.ocn.so.ver-v20120503.1850-1915.xml
 # 130820 - 295 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.so.ver-1.1850-2005.xml
 # 130820 - 313 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.thetao.ver-1.1850-2005.xml
+# 130827 - 284 - cmip5.MIROC4h.historical.r1i1p1.an.ocn.so.ver-1.1950-2005.xml - 97% of RAM usage
 for filecount,l in enumerate(filelist):
     filecount_s = '%06d' % (filecount+1)
     print "".join(['** Processing: ',filecount_s,' ',replace(l,'/work/durack1/Shared/',''),' **'])

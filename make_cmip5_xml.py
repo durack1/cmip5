@@ -246,6 +246,7 @@ PJD 24 Jun 2013     - Added tsl to land variable list
 PJD 24 Jul 2013     - Added sysCallTimeout function - possibly move to durolib
 PJD 26 Aug 2013     - Added shebang
 PJD 26 Aug 2013     - Removed atm_vars2 variable included in atm_vars and cleaned up code
+PJD 27 Aug 2013     - Cleaned up issues with latest code checks
                     - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     - TODO: Add model masternodes
@@ -345,8 +346,8 @@ os.chdir('/cmip5_gdo2')
 cmd = 'df -h | grep cmip5'
 p = Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE)
 out,err = p.communicate()
-writeToLog(logfile,"".join(['TIME: ',time_format,'\n']))
-writeToLog(logfile,"".join(['HOSTNAME: ',host_name,'\n']))
+writeToLog(logfile,"".join(['TIME: ',time_format]))
+writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
 writeToLog(logfile,"".join(['SOURCEFILES:\n',out]))
 del(trim_host,time_now,time_format,cmd,p,out,err)
 gc.collect()
@@ -452,25 +453,28 @@ def pathToFile(inpath,start_time,queue1):
             if checksize == 0:
                 #print "".join(['Zero-sized file: ',path])
                 continue
+            #print 'access check'
             # Read access check
-            if os.access(os.path.join(inpath,testfile),os.R_OK) != True:
+            if os.access(os.path.join(path,testfile),os.R_OK) != True:
                 #print "".join(['No read permissions: ',path])
                 continue
+            #print 'file open'
             f_h = cdm.open(os.path.join(path,testfile))
+            #print 'file opened'
             tracking_id     = f_h.tracking_id
             creation_date   = f_h.creation_date
             f_h.close()
+            #print 'call test latest'
             if test_latest(tracking_id,creation_date):
-                lateststr = 'lat0' ; # Placeholder                
-                #lateststr = 'lat1' ; # Latest
+                lateststr = 'latestX' ; # Placeholder                
+                #lateststr = 'latest1' ; # Latest
             else:
-                lateststr = 'lat0' ; # Not latest
+                lateststr = 'latest0' ; # Not latest
         except:
-            print "".join(['Error indexing path: ',path])
+            #print "".join(['Error indexing path: ',path])
             continue
         # Test for list entry and trim experiments and variables to manageable list
         if (experiment in experiments) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars) or (variable in seaIce_vars) or (variable in land_vars) or (variable in fx_vars) ):
-            #data_outfiles.insert(i2,".".join(['cmip5',model,experiment,realisation,time_ax,realm,tableId,variable,'ver-',version,'xml']))
             data_outfiles.insert(i2,".".join(['cmip5',model,experiment,realisation,time_ax,realm,tableId,variable,"".join(['ver-',version]),lateststr,'xml']))
             data_outfiles_paths.insert(i2,path)
             i2 = i2 + 1
@@ -487,7 +491,7 @@ def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     outfile_count = len(data_outfiles)
     time_since_start_s = '%09.2f' % time_since_start
     print "".join([path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',str(outfile_count).ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)'])
-    writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)\n']))
+    writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)']))
     return
 
 
@@ -596,7 +600,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 1 (cdscan error - zero infile size) indexing '
         else:
             err_text = ' PROBLEM 1 (cdscan error - zero infile size) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad1,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
+        writeToLog(logFile,"".join(['** ',format(xmlBad1,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad1 = xmlBad1 + 1;
@@ -609,7 +613,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = "".join([' DATA PROBLEM 2 (cdscan error- \'',errorCode,'\') indexing '])
         else:
             err_text = "".join([' PROBLEM 2 (cdscan error - \'',errorCode,'\') indexing '])
-        writeToLog(logFile,"".join(['** ',format(xmlBad2,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
+        writeToLog(logFile,"".join(['** ',format(xmlBad2,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad2 = xmlBad2 + 1;
@@ -622,7 +626,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 3 (read perms) indexing '
         else:
             err_text = ' PROBLEM 3 (read perms) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad3,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
+        writeToLog(logFile,"".join(['** ',format(xmlBad3,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad3 = xmlBad3 + 1;
@@ -635,7 +639,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 4 (no outfile) indexing '
         else:
             err_text = ' PROBLEM 4 (no outfile) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad4,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
+        writeToLog(logFile,"".join(['** ',format(xmlBad4,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad4 = xmlBad4 + 1;
@@ -648,7 +652,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
             err_text = ' DATA PROBLEM 5 (no infiles) indexing '
         else:
             err_text = ' PROBLEM 5 (no infiles) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad5,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **\n']))
+        writeToLog(logFile,"".join(['** ',format(xmlBad5,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad5 = xmlBad5 + 1;
@@ -656,7 +660,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
         if os.path.isfile(outfileName):
             os.remove(outfileName)
     else:
-        writeToLog(logFile,"".join(['** ',format(xmlGood,"07d"),' ',logtime_format,' ',time_since_start_s,'s success creating: ',outfileName,' **\n']))
+        writeToLog(logFile,"".join(['** ',format(xmlGood,"07d"),' ',logtime_format,' ',time_since_start_s,'s success creating: ',outfileName,' **']))
         xmlGood = xmlGood + 1;
     
     return[xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood] # ; Non-parallel version of code
@@ -925,7 +929,7 @@ if make_xml:
     xml_count2 = len(o)
     xml_count = int(xml_count1)+int(xml_count2);
     print "".join(['** Updating ',format(xml_count,"1d"),' existing *.xml files **'])
-    writeToLog(logfile,"".join(['** Updating ',format(xml_count,"1d"),' existing *.xml files **\n']))
+    writeToLog(logfile,"".join(['** Updating ',format(xml_count,"1d"),' existing *.xml files **']))
     # Catch errors with system commands
     cmd = "".join(['rm -rf ',host_path,'*/*/mo_new'])
     fnull = open(os.devnull,'w')
@@ -936,7 +940,7 @@ if make_xml:
     p = subprocess.call(cmd,stdout=fnull,shell=True)
     fnull.close() 
     print "** Generating new *.xml files **"
-    writeToLog(logfile,"** Generating new *.xml files **\n")
+    writeToLog(logfile,"** Generating new *.xml files **")
     i = 0
 
     # Loop through all inpaths and outfiles
@@ -1027,9 +1031,9 @@ if make_xml:
     print "".join(['** Complete for \'data\' & \'scratch\' sources; Total outfiles: ',format(len(outfiles),"01d"),' **'])
     print "".join(['** XML file count - Good: ',format(xmlGood-1,"1d"),' **'])
     print "".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d")])
-    writeToLog(logfile,"".join(['** make_cmip5_xml.py complete for \'data\' & \'scratch\' sources; Total outfiles: ',format(len(outfiles),"01d"),' **\n']))
-    writeToLog(logfile,"".join(['** XML file count - Good: ',format(xmlGood-1,"1d"),' **\n']))
-    writeToLog(logfile,"".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d"),' **\n']))
+    writeToLog(logfile,"".join(['** make_cmip5_xml.py complete for \'data\' & \'scratch\' sources; Total outfiles: ',format(len(outfiles),"01d"),' **']))
+    writeToLog(logfile,"".join(['** XML file count - Good: ',format(xmlGood-1,"1d"),' **']))
+    writeToLog(logfile,"".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d"),' **']))
 
     # Once run is complete, and xmlGood > 50k, archive old files and move new files into place
     if xmlGood > 40000:
