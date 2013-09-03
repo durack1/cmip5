@@ -1,3 +1,4 @@
+#!/bin/env python
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jan 31 13:16:50 2012
@@ -17,6 +18,7 @@ PJD 22 Mar 2013     - Added oceanonly to known host list
 PJD  2 Sep 2013     - Added both cmip3 & 5 support to this script through arguments - new file validation required
 PJD  2 Sep 2013     - Adjusted cmds.setNetcdf flags to ensure files are written with compression
 PJD  2 Sep 2013     - Code tidyup and use of functions in durolib
+PJD  2 Sep 2013     - Added shebang for local and remote dir execution
 
 @author: durack1
 """
@@ -41,20 +43,20 @@ start_time = time.time() ; # Set time counter
 
 # Set conditional whether files are created or just numbers are calculated
 parser = argparse.ArgumentParser()
-parser.add_argument('model_suite',metavar='str',type=str,help='include \'cmip3/5\' as a command line argument')
-parser.add_argument('experiment',metavar='str',type=str,help='including \'experiment\' as a command line argument will select one experiment to process')
-parser.add_argument('variable',metavar='str',type=str,help='including \'variable\' as a command line argument will select one variable to process')
-parser.add_argument('start_yr',nargs='?',default=1975,metavar='int',type=int,help='including \'start_yr\' as a command line argument set a start year from which to process')
-parser.add_argument('end_yr',nargs='?',default=2005,metavar='int',type=int,help='including \'end_yr\' as a command line argument set an end year from which to process')
+parser.add_argument('model_suite',metavar='str',type=str,help='include \'cmip3/5\' as an argument')
+parser.add_argument('experiment',metavar='str',type=str,help='including \'experiment\' will select one experiment to process')
+parser.add_argument('variable',metavar='str',type=str,help='including \'variable\' will select one variable to process')
+parser.add_argument('start_yr',nargs='?',default=1975,metavar='int',type=int,help='including \'start_yr\' sets a start year from which to process')
+parser.add_argument('end_yr',nargs='?',default=2005,metavar='int',type=int,help='including \'end_yr\' sets an end year from which to process')
 args = parser.parse_args()
 # Test and validate experiment
 if (args.model_suite not in ['cmip3','cmip5']):
-    model_suite = args.model_suite
     print "** No valid model suite specified - no *.nc files will be written **"
     sys.exit()
 if (args.experiment in ['1pctCO2','abrupt4xCO2','amip','historical','historicalGHG','historicalNat',
                         'piControl','rcp26','rcp45','rcp60','rcp85','1pctto2x','1pctto4x','20c3m',
                         'picntrl','sresa1b','sresa2','sresb1']):
+    model_suite = args.model_suite
     experiment = args.experiment ; # 1 = make files
     variable = args.variable
     start_yr = args.start_yr
@@ -206,7 +208,7 @@ for l in filelist:
     writeToLog(logfile,"".join(['** ',filecount_s,': ',logtime_format,' ',time_since_start_s,'s; slope&clim: ',time_calc_end_s,'s; created: ',outfile,' **']))
     # Cleanup
     del(clim,filecount_s,logtime_format,logtime_now,outfile)
-    del(time_calc_end,time_calc_end_s,time_calc_start,time_format,time_now)
+    del(time_calc_end,time_calc_end_s,time_calc_start)
     del(time_since_start,time_since_start_s,var)
     # Garbage collection before next file iteration
     gc.collect()
