@@ -20,6 +20,7 @@ PJD  2 Sep 2013     - Adjusted cmds.setNetcdf flags to ensure files are written 
 PJD  2 Sep 2013     - Code tidyup and use of functions in durolib
 PJD  2 Sep 2013     - Added shebang for local and remote dir execution
 PJD  2 Sep 2013     - Added realm argument to prevent across realm file generation (pr = atm/ocn/seaIce)
+PJD  2 Sep 2013     - Script is dependent upon an files existing, added test for graceful exit
 
 @author: durack1
 """
@@ -116,7 +117,6 @@ start_yr_s  = str(start_yr)
 end_yr_s    = str(end_yr)
 '''
     
-
 # Set logfile attributes
 time_now = datetime.datetime.now()
 time_format = time_now.strftime("%y%m%d_%H%M%S")
@@ -126,23 +126,28 @@ writeToLog(logfile,"".join(['TIME: ',time_format]))
 writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
 
 # Get list of infiles (*.nc) and 3D (*.xml)
-filelist1 = glob.glob(os.path.join(host_path,experiment,realm,'an/*/*.nc'))
-filelist2 = glob.glob(os.path.join(host_path,experiment,realm,'an/*/*.xml'))
+filelist1 = glob.glob(os.path.join(host_path,experiment,realm,'an',variable,'*.nc'))
+filelist2 = glob.glob(os.path.join(host_path,experiment,realm,'an',variable,'*.xml'))
 
 filelist = list(filelist1)
 filelist.extend(filelist2) ; filelist.sort()
 del(filelist1,filelist2)
 gc.collect()
 
+# Test for valid input files
+if not filelist:
+    print "** No valid an input files - no *.nc files will be written **"
+    sys.exit()   
+
 # Purge entries matching atm_vars_exclude by index
 i = 0
 filelist2 = []
-for file in filelist:
-    if (file.split('/')[8] in variable) and (file.split('/')[5] in experiment):
-        filelist2.insert(i,file)
+for infile in filelist:
+    if (infile.split('/')[8] in variable) and (infile.split('/')[5] in experiment):
+        filelist2.insert(i,infile)
         i = i + 1
 
-del(filelist,i,file)
+del(filelist,i,infile)
 filelist = filelist2
 del(filelist2)
 gc.collect()
