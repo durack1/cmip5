@@ -19,11 +19,13 @@ PJD  2 Sep 2013     - Added both cmip3 & 5 support to this script through argume
 PJD  2 Sep 2013     - Adjusted cmds.setNetcdf flags to ensure files are written with compression
 PJD  2 Sep 2013     - Code tidyup and use of functions in durolib
 PJD  2 Sep 2013     - Added shebang for local and remote dir execution
+PJD  2 Sep 2013     - Added realm argument to prevent across realm file generation (pr = atm/ocn/seaIce)
 
 @author: durack1
 """
-import cdutil,os,datetime,time,glob,re,sys,gc,argparse
+import argparse,datetime,gc,glob,os,re,sys,time
 import cdms2 as cdm
+import cdutil as cdu
 from durolib import globalAttWrite,writeToLog
 from socket import gethostname
 from string import replace
@@ -45,6 +47,7 @@ start_time = time.time() ; # Set time counter
 parser = argparse.ArgumentParser()
 parser.add_argument('model_suite',metavar='str',type=str,help='include \'cmip3/5\' as an argument')
 parser.add_argument('experiment',metavar='str',type=str,help='including \'experiment\' will select one experiment to process')
+parser.add_argument('realm',nargs='?',default='all',metavar='str',type=str,help='including \'realm\' will select one realm to process')
 parser.add_argument('variable',metavar='str',type=str,help='including \'variable\' will select one variable to process')
 parser.add_argument('start_yr',nargs='?',default=1975,metavar='int',type=int,help='including \'start_yr\' sets a start year from which to process')
 parser.add_argument('end_yr',nargs='?',default=2005,metavar='int',type=int,help='including \'end_yr\' sets an end year from which to process')
@@ -57,15 +60,20 @@ if (args.experiment in ['1pctCO2','abrupt4xCO2','amip','historical','historicalG
                         'piControl','rcp26','rcp45','rcp60','rcp85','1pctto2x','1pctto4x','20c3m',
                         'picntrl','sresa1b','sresa2','sresb1']):
     model_suite = args.model_suite
-    experiment = args.experiment ; # 1 = make files
-    variable = args.variable
-    start_yr = args.start_yr
-    start_yr_s = str(start_yr)
-    end_yr = args.end_yr
-    end_yr_s = str(end_yr)
-    print "".join(['** Processing ',variable,' files from ',experiment ,' for ',start_yr_s,'-',end_yr_s,'-Clim.nc file generation **'])
+    experiment  = args.experiment ; # 1 = make files
 else:
     print "** No valid experiment specified - no *.nc files will be written **"
+    sys.exit()
+if (args.realm in ['atm','land','ocn','seaIce']):
+    realm       = args.realm
+    variable    = args.variable
+    start_yr    = args.start_yr
+    start_yr_s  = str(start_yr)
+    end_yr      = args.end_yr
+    end_yr_s    = str(end_yr)
+    print "".join(['** Processing ',variable,' files from ',experiment,' and ',realm,' for ',start_yr_s,'-',end_yr_s,'-Clim.nc file generation **'])
+else:
+    print "** No valid realm specified - no *.nc files will be written **"
     sys.exit()
 # Test and validate variable
 if (args.variable == ""):
@@ -97,17 +105,29 @@ else:
     print '** HOST UNKNOWN, aborting.. **'
     sys.exit()
 
+'''
+model_suite = 'cmip5'
+experiment  = 'historical'
+realm       = 'atm'
+variable    = 'tas'
+start_yr    = 1975
+end_yr      = 2005
+start_yr_s  = str(start_yr)
+end_yr_s    = str(end_yr)
+'''
+    
+
 # Set logfile attributes
 time_now = datetime.datetime.now()
 time_format = time_now.strftime("%y%m%d_%H%M%S")
-logfile = os.path.join(host_path,"".join([time_format,'_make_cmip5_clims-',experiment,'-',variable,'-',trim_host,'.log']))
+logfile = os.path.join(host_path,"".join(["_".join([time_format,'make_cmip5_clims']),"-".join(['',experiment,realm,variable,trim_host]),'.log']))
 # Create logfile
 writeToLog(logfile,"".join(['TIME: ',time_format]))
 writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
 
 # Get list of infiles (*.nc) and 3D (*.xml)
-filelist1 = glob.glob("".join([host_path,experiment,'/*/an/*/*.nc']))
-filelist2 = glob.glob("".join([host_path,experiment,'/*/an/*/*.xml']))
+filelist1 = glob.glob(os.path.join(host_path,experiment,realm,'an/*/*.nc'))
+filelist2 = glob.glob(os.path.join(host_path,experiment,realm,'an/*/*.xml'))
 
 filelist = list(filelist1)
 filelist.extend(filelist2) ; filelist.sort()
@@ -132,11 +152,11 @@ writeToLog(logfile,"".join([host_path,': ',format(len(filelist),"06d"),' nc file
 
 # Count and purge code
 # Deal with existing *.nc files
-ii,o,e = os.popen3("".join(['ls ',host_path,experiment,'/*/an_clims/',str(start_yr),'-',str(end_yr),'/',variable,'/*.nc | wc -l']))
+ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,experiment,realm,'an_clims',"-".join([str(start_yr),str(end_yr)]),variable,'*.nc'),' | wc -l']))
 nc_count = o.read();
 print "".join(['** Purging ',nc_count.strip(),' existing *.nc files **'])
 writeToLog(logfile,"".join(['** Purging ',nc_count.strip(),' existing *.nc files **']))
-cmd = "".join(['rm -f ',host_path,experiment,'/*/an_clims/',str(start_yr),'-',str(end_yr),'/',variable,'/*.nc'])
+cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_clims',"-".join([str(start_yr),str(end_yr)]),variable,'*.nc')])
 # Catch errors with system commands
 ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future
 print "** *.nc files purged **"
@@ -163,7 +183,7 @@ for l in filelist:
         continue
     else:
         try:
-            clim = cdutil.YEAR.climatology(d(time=(start_yr_s,end_yr_s,"cob")))
+            clim = cdu.YEAR.climatology(d(time=(start_yr_s,end_yr_s,"cob")))
             clim = clim.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
             clim.comment = "".join([start_yr_s,'-',end_yr_s,' climatological mean'])
             outfile = re.sub("[0-9]{4}-[0-9]{4}","".join([start_yr_s,'-',end_yr_s,'_anClim']),l)
