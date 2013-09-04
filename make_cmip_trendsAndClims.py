@@ -535,7 +535,6 @@ for filecount,l in enumerate(filelist):
                         (slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d_level_150),error=1,nointercept=1)
                         # Inflate slope from single year to length of record
                         slope_drift1[depth:depth+level_count,...]       = slope_lev*(end_yr_ct.year-start_yr_ct.year) ; # Correct back to X-yr equivalent
-                        (end_yr_ct.year-start_yr_ct.year)
                         slope_err_drift1[depth:depth+level_count,...]   = slope_err_lev*(end_yr_ct.year-start_yr_ct.year)
                         clim_tmp1                                       = cdu.YEAR.climatology(d_level_150)
                         clim_drift1[0,depth:depth+level_count,...]      = clim_tmp1
