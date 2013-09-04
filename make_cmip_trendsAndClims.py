@@ -359,7 +359,7 @@ else:
     cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,'*/*.nc')])
     #cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
 # Catch errors with system commands
-#ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
+ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
 print "** *.nc files purged **"
 writeToLog(logfile,"** *.nc files purged **")
 print "** Generating new *.nc files **"
