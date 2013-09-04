@@ -89,6 +89,8 @@ PJD 26 Aug 2013     - Removed duplication between experiments
 PJD 26 Aug 2013     - Removed drift calculation from historical if statement so works with all experiments
 PJD 27 Aug 2013     - Added start/end year arguments
 PJD 27 Aug 2013     - Cleaned up some path issues and redirected output back to master dir (not tmp)
+PJD  4 Sep 2013     - Cleaned up issues with zero fields being returned as drift estimates
+PJD  4 Sep 2013     - Added drift attribute to outfile path
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -219,6 +221,7 @@ else:
     all_files = False
     all_realms = False
 
+#%%
 '''
 ## TEST ##
 all_files       = False
@@ -228,10 +231,10 @@ model_suite     = 'cmip5'
 experiment      = 'historical'
 realm           = 'ocn'
 variable        = 'so'
-drift           = 'nodriftcorrect'
-driftcorrect    = False
-start_yr        = 1950
-end_yr          = 1999
+drift           = 'driftcorrect'
+driftcorrect    = True
+start_yr        = 1970
+end_yr          = 2004
 time_yrs        = "".join([str(start_yr),'-',str(end_yr)])
 
 experiment = 'rcp85'
@@ -243,6 +246,7 @@ realm = 'atm'
 variable = 'tas'
 driftcorrect = 'False'
 '''
+#%%
 
 # Set host information and directories
 host_name = gethostname()
@@ -355,7 +359,7 @@ else:
     cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,'*/*.nc')])
     #cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
 # Catch errors with system commands
-ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
+#ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
 print "** *.nc files purged **"
 writeToLog(logfile,"** *.nc files purged **")
 print "** Generating new *.nc files **"
@@ -368,6 +372,7 @@ writeToLog(logfile,"** Generating new *.nc files **")
 # 130820 - 295 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.so.ver-1.1850-2005.xml
 # 130820 - 313 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.thetao.ver-1.1850-2005.xml
 # 130827 - 284 - cmip5.MIROC4h.historical.r1i1p1.an.ocn.so.ver-1.1950-2005.xml - 97% of RAM usage
+# 130904 - 0 - ACCESS1-0.historical.r1i1p1; 30 - CESM1-BGC.historical.r1i1p1 and 80 - CNRM-CM5.piControl.r1i1p1
 for filecount,l in enumerate(filelist):
     filecount_s = '%06d' % (filecount+1)
     print "".join(['** Processing: ',filecount_s,' ',replace(l,'/work/durack1/Shared/',''),' **'])
@@ -398,7 +403,7 @@ for filecount,l in enumerate(filelist):
             start_yr_ct         = cdt.comptime(start_yr) ; # Start year
             drift_start_yr_ct   = cdt.comptime(1900)
             end_yr_ct           = cdt.comptime(end_yr) ; # End year
-            drift_end_yr_ct     = cdt.comptime(2049)
+            drift_end_yr_ct     = cdt.comptime(2050)
         elif model_suite in 'cmip5':
             start_yr_ct         = cdt.comptime(start_yr) ; # Start year
             drift_start_yr_ct   = cdt.comptime(1905)
@@ -414,6 +419,7 @@ for filecount,l in enumerate(filelist):
     outfile         = re.sub('[0-9]{4}-[0-9]{4}',"".join([time_yrs,'_ClimAndSlope']),l)
     outfile         = re.sub(".xml",".nc",outfile) ; # Correct for 3D an.xml files
     outfile         = re.sub('/an/',"".join(['/an_trends/',time_yrs,'/']),outfile)
+    outfile         = re.sub("".join(['/',var,'/']),"".join(['/',"_".join([var,drift]),'/']),outfile)
     #outfile         = re.sub(host_path,os.path.join(host_path,'tmp/'),outfile) ; ## TEST ##
         
     # Standard read
@@ -437,7 +443,7 @@ for filecount,l in enumerate(filelist):
     slope           = slope.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
     slope_err       = slope_err.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
     slope.comment   = "".join([time_yrs,' change'])
-    slope.units     = re.sub('per years',"".join(['per ',time_length,' years']),slope.units)    
+    slope.units     = re.sub('per years',"".join(['per ',time_length,' years']),slope.units)
     slope_err.units = re.sub('per years',"".join(['per ',time_length,' years']),slope_err.units)
     # Create ~50-yr mean climatology
     clim            = cdu.YEAR.climatology(d())
@@ -510,9 +516,9 @@ for filecount,l in enumerate(filelist):
                     clim_drift1         = np.ma.zeros([1,d_h.shape[1],d_h.shape[2],d_h.shape[3]])
                     slope_drift1        = np.ma.zeros([d_h.shape[1],d_h.shape[2],d_h.shape[3]])
                     slope_err_drift1    = np.ma.zeros([d_h.shape[1],d_h.shape[2],d_h.shape[3]])
-                    clim_drift2         = np.ma.zeros([1,d_h.shape[1],d_h.shape[2],d_h.shape[3]])
-                    slope_drift2        = np.ma.zeros([d_h.shape[1],d_h.shape[2],d_h.shape[3]])
-                    slope_err_drift2    = np.ma.zeros([d_h.shape[1],d_h.shape[2],d_h.shape[3]])
+                    #clim_drift2         = np.ma.zeros([1,d_h.shape[1],d_h.shape[2],d_h.shape[3]])
+                    #slope_drift2        = np.ma.zeros([d_h.shape[1],d_h.shape[2],d_h.shape[3]])
+                    #slope_err_drift2    = np.ma.zeros([d_h.shape[1],d_h.shape[2],d_h.shape[3]])
     
                     # Deal with memory limits                    
                     if model in 'MPI-ESM-MR':
@@ -528,23 +534,25 @@ for filecount,l in enumerate(filelist):
                         d_level_150                 = d_level(time=(drift_start,drift_end,'con'))
                         (slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d_level_150),error=1,nointercept=1)
                         # Inflate slope from single year to length of record
-                        slope_drift1[depth:depth+level_count,...]       = slope_lev*(50/len(d_level_150)) ; # Correct back to 50-yr equivalent
-                        slope_err_drift1[depth:depth+level_count,...]   = slope_err_lev*(50/len(d_level_150))
+                        slope_drift1[depth:depth+level_count,...]       = slope_lev*(end_yr_ct.year-start_yr_ct.year) ; # Correct back to X-yr equivalent
+                        (end_yr_ct.year-start_yr_ct.year)
+                        slope_err_drift1[depth:depth+level_count,...]   = slope_err_lev*(end_yr_ct.year-start_yr_ct.year)
                         clim_tmp1                                       = cdu.YEAR.climatology(d_level_150)
                         clim_drift1[0,depth:depth+level_count,...]      = clim_tmp1
                         del(d_level_150,slope_lev,slope_err_lev) ; gc.collect()
                         
                         # Use full time window
-                        (slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d_level),error=1,nointercept=1)
+                        #(slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d_level),error=1,nointercept=1)
                         # Inflate slope from single year to length of record
-                        slope_drift2[depth:depth+level_count,...]       = slope_lev*(50/len(d_level)) ; # Correct back to 50-yr equivalent
-                        slope_err_drift2[depth:depth+level_count,...]   = slope_err_lev*(50/len(d_level))
-                        clim_tmp2                                       = cdu.YEAR.climatology(d_level)
-                        clim_drift2[0,depth:depth+level_count,...]      = clim_tmp2
-                        del(d_level,slope_lev,slope_err_lev) ; gc.collect()
+                        #slope_drift2[depth:depth+level_count,...]       = slope_lev*(end_yr_ct.year-start_yr_ct.year) ; # Correct back to X-yr equivalent
+                        #slope_err_drift2[depth:depth+level_count,...]   = slope_err_lev*(end_yr_ct.year-start_yr_ct.year)
+                        #clim_tmp2                                       = cdu.YEAR.climatology(d_level)
+                        #clim_drift2[0,depth:depth+level_count,...]      = clim_tmp2
+                        #del(d_level,slope_lev,slope_err_lev) ; gc.collect()
                     # for depth in range(0,((d_h.shape ...
                         
                     # Redress np to cdms variables
+                    # 150-yr drift estimate
                     slope_drift1        = cdm.createVariable(slope_drift1,id='slope_drift1')
                     slope_drift1.setAxis(0,d_h.getAxis(1))                    
                     slope_drift1.setAxis(1,d_h.getAxis(2))
@@ -558,38 +566,39 @@ for filecount,l in enumerate(filelist):
                     clim_drift1.setAxis(1,d_h.getAxis(1))
                     clim_drift1.setAxis(2,d_h.getAxis(2))
                     clim_drift1.setAxis(3,d_h.getAxis(3))
-                    slope_drift2        = cdm.createVariable(slope_drift2,id='slope_drift2')
-                    slope_drift2.setAxis(0,d_h.getAxis(1))                    
-                    slope_drift2.setAxis(1,d_h.getAxis(2))
-                    slope_drift2.setAxis(2,d_h.getAxis(3))
-                    slope_err_drift2    = cdm.createVariable(slope_err_drift2,id='slope_err_drift2')
-                    slope_err_drift2.setAxis(0,d_h.getAxis(1))
-                    slope_err_drift2.setAxis(1,d_h.getAxis(2))
-                    slope_err_drift2.setAxis(2,d_h.getAxis(3))
-                    clim_drift2         = cdm.createVariable(clim_drift2,id='clim_drift2')
-                    clim_drift2.setAxis(0,clim_tmp2.getAxis(0))
-                    clim_drift2.setAxis(1,d_h.getAxis(1))
-                    clim_drift2.setAxis(2,d_h.getAxis(2))
-                    clim_drift2.setAxis(3,d_h.getAxis(3))
+                    # full piControl drift estimate
+                    #slope_drift2        = cdm.createVariable(slope_drift2,id='slope_drift2')
+                    #slope_drift2.setAxis(0,d_h.getAxis(1))                    
+                    #slope_drift2.setAxis(1,d_h.getAxis(2))
+                    #slope_drift2.setAxis(2,d_h.getAxis(3))
+                    #slope_err_drift2    = cdm.createVariable(slope_err_drift2,id='slope_err_drift2')
+                    #slope_err_drift2.setAxis(0,d_h.getAxis(1))
+                    #slope_err_drift2.setAxis(1,d_h.getAxis(2))
+                    #slope_err_drift2.setAxis(2,d_h.getAxis(3))
+                    #clim_drift2         = cdm.createVariable(clim_drift2,id='clim_drift2')
+                    #clim_drift2.setAxis(0,clim_tmp2.getAxis(0))
+                    #clim_drift2.setAxis(1,d_h.getAxis(1))
+                    #clim_drift2.setAxis(2,d_h.getAxis(2))
+                    #clim_drift2.setAxis(3,d_h.getAxis(3))
                     
                 else:
                     # Case of 2D variables
                     d = f_drift(var)
-                    # Use 150-year window
+                    # 150-yr drift estimate
                     d1 = d(time=(drift_start,drift_end,'con'))
                     (slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d1),error=1,nointercept=1)
                     # Inflate slope from single year to length of record
-                    slope_drift1                = slope_lev*len(d1)
-                    slope_err_drift1            = slope_err_lev*len(d1)
+                    slope_drift1                = slope_lev*(end_yr_ct.year-start_yr_ct.year) ; # Correct back to X-yr equivalent
+                    slope_err_drift1            = slope_err_lev*(end_yr_ct.year-start_yr_ct.year)
                     clim_drift1                 = cdu.YEAR.climatology(d1)
                     del(d1,slope_lev,slope_err_lev) ; gc.collect()
-                    # Use full time window
-                    (slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d),error=1,nointercept=1)
+                    # full piControl drift estimate
+                    #(slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d),error=1,nointercept=1)
                     # Inflate slope from single year to length of record
-                    slope_drift2                = slope_lev*len(d)
-                    slope_err_drift2            = slope_err_lev*len(d)
-                    clim_drift2                 = cdu.YEAR.climatology(d)
-                    del(d,slope_lev,slope_err_lev) ; gc.collect()
+                    #slope_drift2                = slope_lev*len(d)
+                    #slope_err_drift2            = slope_err_lev*len(d)
+                    #clim_drift2                 = cdu.YEAR.climatology(d)
+                    #del(d,slope_lev,slope_err_lev) ; gc.collect()
                     f_drift.close()
                 # if var in ['so ...
     
@@ -597,6 +606,7 @@ for filecount,l in enumerate(filelist):
                 del(d_h,branch_time_comp,bits,compt,parent_exp_rip,an_start_year,offset_start,offset_end) ; gc.collect()             
                 
                 # Redress variables
+                # 150-yr drift estimate
                 clim_drift1                 = clim_drift1.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
                 clim_drift1.id              = "".join([var,'_mean_drift1'])
                 clim_drift1.comment         = "".join([str(drift_end.year-drift_start.year),'-year piControl climatological mean'])
@@ -607,6 +617,7 @@ for filecount,l in enumerate(filelist):
                 slope_drift1                = slope_drift1.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
                 slope_drift1.id             = "".join([var,'_change_drift1'])
                 slope_drift1.comment        = "".join([str(drift_end.year-drift_start.year),'-year piControl linear drift'])
+                slope_drift1.units          = slope.units
                 slope_drift1.file           = drift_file
                 slope_drift1.drift_start    = str(drift_start.year)
                 slope_drift1.drift_end      = str(drift_end.year)
@@ -615,24 +626,28 @@ for filecount,l in enumerate(filelist):
                 slope_err_drift1            = slope_err_drift1.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
                 slope_err_drift1.id         = "".join([var,'_change_error_drift1'])
                 slope_err_drift1.comment    = 'linear trend error drift1'
-                clim_drift2                 = clim_drift2.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
-                clim_drift2.id              = "".join([var,'_mean_drift2'])
-                clim_drift2.comment         = 'full piControl climatological mean'
-                clim_drift2.file            = drift_file
-                clim_drift2.drift_start     = str(picontrol_start_yr)
-                clim_drift2.drift_end       = str(picontrol_end_yr)
-                clim_drift2.drift_length    = str(picontrol_end_yr-picontrol_start_yr)
-                slope_drift2                = slope_drift2.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
-                slope_drift2.id             = "".join([var,'_change_drift2'])
-                slope_drift2.comment        = 'full piControl linear drift'
-                slope_drift2.file           = drift_file
-                slope_drift2.drift_start    = str(picontrol_start_yr)
-                slope_drift2.drift_end      = str(picontrol_end_yr)
-                slope_drift2.drift_length   = str(picontrol_end_yr-picontrol_start_yr)
-                del(picontrol_start_yr,picontrol_end_yr) ; gc.collect()
-                slope_err_drift2            = slope_err_drift2.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
-                slope_err_drift2.id         = "".join([var,'_change_error_drift2'])
-                slope_err_drift2.comment    = 'linear trend error drift2'
+                slope_err_drift1.units      = slope_err.units
+                # full piControl drift estimate
+                #clim_drift2                 = clim_drift2.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
+                #clim_drift2.id              = "".join([var,'_mean_drift2'])
+                #clim_drift2.comment         = 'full piControl climatological mean'
+                #clim_drift2.file            = drift_file
+                #clim_drift2.drift_start     = str(picontrol_start_yr)
+                #clim_drift2.drift_end       = str(picontrol_end_yr)
+                #clim_drift2.drift_length    = str(picontrol_end_yr-picontrol_start_yr)
+                #slope_drift2                = slope_drift2.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
+                #slope_drift2.id             = "".join([var,'_change_drift2'])
+                #slope_drift2.comment        = 'full piControl linear drift'
+                #slope_drift2.units          = re.sub('per years',"".join(['per ',time_length,' years']),slope_drift2.units)
+                #slope_drift2.file           = drift_file
+                #slope_drift2.drift_start    = str(picontrol_start_yr)
+                #slope_drift2.drift_end      = str(picontrol_end_yr)
+                #slope_drift2.drift_length   = str(picontrol_end_yr-picontrol_start_yr)
+                #del(picontrol_start_yr,picontrol_end_yr) ; gc.collect()
+                #slope_err_drift2            = slope_err_drift2.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
+                #slope_err_drift2.id         = "".join([var,'_change_error_drift2'])
+                #slope_err_drift2.comment    = 'linear trend error drift2'
+                #slope_err_drift2.units      = re.sub('per years',"".join(['per ',time_length,' years']),slope_err_drift2.units)
                 
             else:
                 print "".join(['** KeyError: ',model,' - no branch_time information exists: Drift estimate failed **'])
@@ -643,7 +658,7 @@ for filecount,l in enumerate(filelist):
             print 'Exception thrown: ',err
             writeToLog(logfile,"".join(['** Exception thrown: ',str(err), ' **']))
             if 'clim_drift1' in locals():
-                del(clim_drift1,slope_drift1,slope_err_drift1,clim_drift2,slope_drift2,slope_err_drift2)
+                del(clim_drift1,slope_drift1,slope_err_drift1)#,clim_drift2,slope_drift2,slope_err_drift2)
             if 'Coordinate interval is out of range' in re.sub('\'','',str(err)):
                 # Catch issues with incomplete historical timeseries: cmip5.EC-EARTH.historical.r13i1p1.an.ocn.so.ver-v20120503.1850-1915.xml
                 # trip_try will catch issues with drift estimates from piControl files
@@ -690,14 +705,14 @@ for filecount,l in enumerate(filelist):
     f_out.write(clim) ; # Write clim first as it has all grid stuff
     if 'slope_drift1' in locals():
         f_out.write(clim_drift1)
-        f_out.write(clim_drift2)
+        #f_out.write(clim_drift2)
     f_out.write(slope)
     f_out.write(slope_err)
     if 'slope_drift1' in locals():
         f_out.write(slope_drift1)
         f_out.write(slope_err_drift1)
-        f_out.write(slope_drift2)
-        f_out.write(slope_err_drift2)
+        #f_out.write(slope_drift2)
+        #f_out.write(slope_err_drift2)
     # Close all files
     f_in.close()
     f_out.close()
@@ -714,7 +729,7 @@ for filecount,l in enumerate(filelist):
     del(slope,slope_err,time_calc_end,time_calc_end_s,time_calc_start)
     if 'slope_drift1' in locals():
         del(clim_drift1,slope_drift1,slope_err_drift1)
-        del(clim_drift2,slope_drift2,slope_err_drift2)
+        #del(clim_drift2,slope_drift2,slope_err_drift2)
     del(time_since_start,time_since_start_s,var) ; gc.collect()
 
 # Log success to file
