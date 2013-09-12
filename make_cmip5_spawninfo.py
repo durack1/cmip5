@@ -1,3 +1,4 @@
+#!/bin/env python
 # -*- coding: utf-8 -*-
 """
 Created on Tue Sep 18 13:57:02 2012
@@ -61,14 +62,16 @@ PJD  9 May 2013     - Added FGOALS-s2 branch times for 1pctCO2 and abrupt4xCO2 r
 PJD 10 Jun 2013     - Added ACCESS1-3.historical.r2/r3
 PJD 12 Jun 2013     - Added NorESM1-ME.historical.r1
 PJD 12 Jun 2013     - Added MPI-ESM-MR.historical.r2/3
-PJD 12 Jun 2013     - TODO: Hunt down issue with incorrect branch_time reported for bcc-csm1-1-m.r1i1p1.1pctCO2 - reported 160-1-1 should be 240-1-1
-PJD 12 Jun 2013     - TODO: piControl_info isn't saving correct start years IPSL-CM5A-LR.historical.r1i1p1 reports 2370 not 1850
-PJD 12 Jun 2013     - TODO: lost branch_time difference reporting (121009_* file) smaller when compared to 121024_* although
+PJD 12 Sep 2013     - Added shebang
+PJD 12 Sep 2013     - Replaced log writes with writeToLog function
+                    - TODO: Hunt down issue with incorrect branch_time reported for bcc-csm1-1-m.r1i1p1.1pctCO2 - reported 160-1-1 should be 240-1-1
+                    - TODO: piControl_info isn't saving correct start years IPSL-CM5A-LR.historical.r1i1p1 reports 2370 not 1850
+                    - TODO: lost branch_time difference reporting (121009_* file) smaller when compared to 121024_* although
                     All problem files from 121009_* are noted, but only one entry (rather than all differing) are logged
-PJD 12 Jun 2013     - TODO: Add thetao/so variables (on which drift calcs are based) to interrogation, so as to ascertain
+                    - TODO: Add thetao/so variables (on which drift calcs are based) to interrogation, so as to ascertain
                     if the thetao/so variables locally available have the complete (or subset) temporal coverage
-PJD 12 Jun 2013     - TODO: include tracking_id and creation_date in logfile/dictionary
-PJD 12 Jun 2013     - TODO: Write out all diagnostics to a dictionary and pickle dump file
+                    - TODO: include tracking_id and creation_date in logfile/dictionary
+                    - TODO: Write out all diagnostics to a dictionary and pickle dump file
 
 @author: durack1
 """
@@ -78,6 +81,7 @@ if 'e' in locals():
 
 import datetime,gc,os,re,pickle,sys
 import cdms2 as cdms
+from durolib import writeToLog
 from collections import OrderedDict
 from numpy import mod
 from numpy import float32
@@ -367,11 +371,8 @@ pickle.dump(cmip5_branch_time_dict,f_h)
 f_h.close()
 del(f)
 
-
-
 # Load Pete G's spawning dictionary - contains time_indx,time_rel,time_comp and keys model and realisation
 spawn_dict = pickle.load(open('130509_all_mod_branch_estimates.p','rb'))
-
 
 # Specify default delimiters
 delim = ',\t' ; ldelim = '\',\''
@@ -379,22 +380,20 @@ delim = ',\t' ; ldelim = '\',\''
 header = "".join(['filename',delim,'calendar',delim,'time_units',delim,'startyr',delim,
           'endyr',delim,'branch_time',delim,'branch_time_comp',delim,'branch_time_valid',delim,
           'branch_time_gleckler',delim,'branch_time_gregory',delim,'piC_startyr',delim,'piC_endyr',delim,'parent_exp_id',delim,
-          'parent_exp_rip','\n'])
+          'parent_exp_rip'])
 ''' Add tracking_id & creation_date
 header = "".join(['filename',delim,'tracking_id',delim,'creation_date',delim,'calendar',delim,'time_units',delim,'startyear',delim,
           'endyear',delim,'branch_time',delim,'branch_time_comp',delim,'branch_time_validated',delim,'parent_experiment_id',delim,'parent_experiment_rip',
-          delim,'contact','\n'])
+          delim,'contact'])
 '''
 
 # Create log file
-time_now = datetime.datetime.now()
+time_now    = datetime.datetime.now()
 time_format = time_now.strftime("%y%m%d_%H%M%S")
-logfile = os.path.join(host_path,"".join([time_format,'_make_cmip5_spawninfo-',trim_host,'.log'])) ; # BATCH MODE
-logfile_handle = open(logfile,'w')
-logfile_handle.write("".join(['TIME: ',time_format,'\n']))
-logfile_handle.write("".join(['CONTACT: Paul J. Durack, PCMDI, LLNL\n']))
-logfile_handle.write("".join(['#cmip*: denotes issue with inconsistent branch time between single realisation variables\n']))
-logfile_handle.close()
+logfile     = os.path.join(host_path,"".join([time_format,'_make_cmip5_spawninfo-',trim_host,'.log'])) ; # BATCH MODE
+writeToLog(logfile,"".join(['TIME: ',time_format]))
+writeToLog(logfile,"".join(['CONTACT: Paul J. Durack, PCMDI, LLNL']))
+writeToLog(logfile,"".join(['#cmip*: denotes issue with inconsistent branch time between single realisation variables']))
 del(time_now,time_format)
 gc.collect()
 
@@ -407,7 +406,6 @@ filename_trim_1 = '' ; branch_time_1 = [] ; piControl_info = []; count = 0; year
 for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748 first rcp26 file; 130318 9749 first rcp26 file; 130318 5200 include inmcm4
     if mod(count,1) == 0:
         print "".join(['count: ',str(count)])
-        #print file1
     count = count + 1
     if '.directory' in file1:
         continue
@@ -416,7 +414,6 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
     f = cdms.open(file1)
     filename = file1.split('/')[-1]
     filename_trim = filename[6:(filename.index('.an.'))]
-    #filename_trim = filename[6:(filename.index('.mo.'))] ; # SHORTTERM FIX DUE TO AN FILE INVALID NAMES
     
     # Test for model change
     if (filename_trim_1 == ''):
@@ -428,67 +425,57 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
 
     # Write out to logfile (before harvesting new info from files)
     if writelog:
-        logfile_handle = open(logfile,'a')
         # Add tracking_id, creation_date and contact to output
-        logfile_handle.write("".join([filename_pad,delim,calendar,delim,time_units,delim,str(firstyear),delim,
+        writeToLog(logfile,"".join([filename_pad,delim,calendar,delim,time_units,delim,str(firstyear),delim,
                                     str(lastyear),delim,branch_time,delim,branch_time_comp1,delim,branch_time_comp2,delim,
                                     branch_time_valid,delim,greg_year,delim,str(piC_startyr),delim,str(piC_endyr),delim,
-                                    parent_experiment_id,delim,parent_experiment_rip,'\n']))
+                                    parent_experiment_id,delim,parent_experiment_rip]))
         writelog = False ; # Reset
-        logfile_handle.close()
     
     # Write header info
-    header2 = "".join(['## ',file1.split('/')[5],' ##\n'])
+    header2 = "".join(['## ',file1.split('/')[5],' ##'])
     if 'header1' not in locals():
-        header1 = "".join(['## ',file1.split('/')[5],' ##\n'])
-        logfile_handle = open(logfile,'a')
-        logfile_handle.write(header1)
-        logfile_handle.write(header)
-        logfile_handle.close()
+        header1 = "".join(['## ',file1.split('/')[5],' ##'])
+        writeToLog(logfile,header1)
+        writeToLog(logfile,header)
     elif header2 != header1:
-        header1 = "".join(['## ',file1.split('/')[5],' ##\n'])
-        logfile_handle = open(logfile,'a')
-        logfile_handle.write(header1)
-        logfile_handle.write(header)
-        logfile_handle.close()
+        header1 = "".join(['## ',file1.split('/')[5],' ##'])
+        writeToLog(logfile,header1)
+        writeToLog(logfile,header)
     
     # Read attributes and create variables
-    #branch_time = str(f.branch_time[0])
     try:
-        #branch_time = str(f.branch_time.squeeze())
         branch_time = str(int(float(f.branch_time.squeeze())))
     except:
-        #branch_time = f.branch_time
         branch_time = str(int(float(f.branch_time)))
-    creation_date = f.creation_date
-    experiment_id = f.experiment_id ; # Also experiment variable
-    #print experiment_id
-    parent_experiment_id = f.parent_experiment_id ; # Also parent_experiment variable 
-    realization = str(f.realization[0])
-    time_units = f.getdimensionunits('time')
-    tracking_id = f.tracking_id
+    creation_date           = f.creation_date
+    experiment_id           = f.experiment_id ; # Also experiment variable
+    parent_experiment_id    = f.parent_experiment_id ; # Also parent_experiment variable 
+    realization             = str(f.realization[0])
+    time_units              = f.getdimensionunits('time')
+    tracking_id             = f.tracking_id
     
     # If branch_time is same for multiple variables only list first instance
-    yearfirst = int(filename.split('.')[-2].split('-')[0])
-    yearlast = int(filename.split('.')[-2].split('-')[-1])
+    yearfirst   = int(filename.split('.')[-2].split('-')[0])
+    yearlast    = int(filename.split('.')[-2].split('-')[-1])
     # Test years
-    # First year
+    # First
     if yearfirst_1 == '':
         firstyear = yearfirst
     elif (filename_trim == filename_trim_1) and (yearfirst != yearfirst_1):
         firstyear = min(yearfirst,yearfirst_1)
-    # Last year
+    # Last
     if yearlast_1 == '':
-        lastyear = yearlast  
+        lastyear            = yearlast  
     elif (filename_trim == filename_trim_1) and (yearlast != yearlast_1):
-        lastyear = max(yearlast,yearlast_1)
+        lastyear            = max(yearlast,yearlast_1)
     if (filename_trim != filename_trim_1):
-        firstyear = yearfirst
-        lastyear = yearlast
-        branch_time_comp2 = 'BLANK'
+        firstyear           = yearfirst
+        lastyear            = yearlast
+        branch_time_comp2   = 'BLANK'
     # After checking reset test variables
     yearfirst_1 = firstyear
-    yearlast_1 = lastyear        
+    yearlast_1  = lastyear        
  
     # Test branch_times
     if (filename_trim == filename_trim_1) and (branch_time == branch_time_1):
@@ -501,7 +488,6 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
 
     # After checking, reset test variables
     filename_trim_1 = filename[6:(filename.index('.an.'))]
-    #filename_trim_1 = filename[6:(filename.index('.mo.'))] ; # SHORTTERM FIX DUE TO AN FILE INVALID NAMES
     branch_time_1 = branch_time
     branch_time_valid = 'BLANK'
     
