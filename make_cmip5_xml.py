@@ -248,6 +248,7 @@ PJD 26 Aug 2013     - Added shebang
 PJD 26 Aug 2013     - Removed atm_vars2 variable included in atm_vars and cleaned up code
 PJD 27 Aug 2013     - Cleaned up issues with latest code checks
 PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from files to speed up processing - speed up ~4x
+PJD 16 Sep 2013     - Import of cdms2 prompts user for yes/no logging query (since 1.4.0rc1) causing hangs - commented out cdms2 import in response
                     - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     - TODO: Add model masternodes
@@ -278,7 +279,7 @@ PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from 
 """
 
 import argparse,datetime,errno,gc,glob,os,pickle,shlex,subprocess,sys,time
-import cdms2 as cdm
+#import cdms2 as cdm
 from durolib import writeToLog
 from multiprocessing import Process,Manager
 from socket import gethostname
