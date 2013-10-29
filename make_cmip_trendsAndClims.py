@@ -91,6 +91,7 @@ PJD 27 Aug 2013     - Added start/end year arguments
 PJD 27 Aug 2013     - Cleaned up some path issues and redirected output back to master dir (not tmp)
 PJD  4 Sep 2013     - Cleaned up issues with zero fields being returned as drift estimates
 PJD  4 Sep 2013     - Added drift attribute to outfile path
+PJD 29 Oct 2013     - Added variables to valid list (sic,sit,sos..)
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -166,7 +167,7 @@ if (args.experiment not in ['all','1pctCO2','abrupt4xCO2','amip','historical','h
 if (args.realm not in ['all','atm','land','ocn','seaIce']):
     print "** No valid realm specified - no *.nc files will be written **"
     sys.exit()
-if (args.variable not in ['all','pr','so','tas','thetao']):
+if (args.variable not in ['all','pr','sic','sit','so','sos','tas','thetao','tos','vo','wfo','zostoga']):
     print "** No valid variable specified - no *.nc files will be written **"
     sys.exit()
 if (args.driftcorrect in ['True','False']):
