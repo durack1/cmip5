@@ -92,6 +92,8 @@ PJD 27 Aug 2013     - Cleaned up some path issues and redirected output back to 
 PJD  4 Sep 2013     - Cleaned up issues with zero fields being returned as drift estimates
 PJD  4 Sep 2013     - Added drift attribute to outfile path
 PJD 29 Oct 2013     - Added variables to valid list (sic,sit,sos..)
+PJD  5 Nov 2013     - Updated to loop over depths in 3D data MIROC4h, MPI-ESM-MR
+PJD  5 Nov 2013     - Cleaned up path count/purge code now drift code is implemented
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -333,32 +335,24 @@ del(vars_atm_exclude,vars_ocn_exclude,vars_exclude,exps_exclude); gc.collect()
 if 'logfile' in locals():
     writeToLog(logfile,"".join([host_path,': ',format(len(filelist),"06d"),' nc files found to process']))
 
-# Count and purge code
-# Deal with existing *.nc files
+# Count and purge code - Deal with existing *.nc files
+# Count
 if all_files:
-    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,'*/*/an_trends',time_yrs,'*/*.nc'),' | wc -l']))
+    cmd = "".join(['ls ',os.path.join(host_path,'*/*/an_trends',time_yrs,'*/*.nc'),' | wc -l'])
 elif all_realms:
-    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,experiment,'*/an_trends',time_yrs,'*/*.nc'),' | wc -l']))
+    cmd = "".join(['ls ',os.path.join(host_path,experiment,'*/an_trends',time_yrs,'*/*.nc'),' | wc -l'])
 elif variable not in 'all':
-    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,experiment,'*/an_trends',time_yrs,variable,'*.nc'),' | wc -l']))
+    cmd = "".join(['ls ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,variable,'*.nc'),' | wc -l'])
+    cmd = re.sub("".join(['/',variable,'/']),"".join(['/',"_".join([variable,drift]),'/']),cmd)
 else:
-    ii,o,e = os.popen3("".join(['ls ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,'*/*.nc'),' | wc -l']))
-
+    cmd = "".join(['ls ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,'*/*.nc'),' | wc -l'])
+ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
 nc_count = o.read();
 print "".join(['** Purging ',nc_count.strip(),' existing *.nc files **'])
 writeToLog(logfile,"".join(['** Purging ',nc_count.strip(),' existing *.nc files **']))
 del(ii,o,e,nc_count) ; gc.collect()
-
-if all_files:
-    cmd = "".join(['rm -f ',host_path,'*/*/an_trends/*/*.nc'])
-elif all_realms:
-    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,'*/an_trends',time_yrs,'*/*.nc')])
-    #cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
-elif variable not in 'all':
-    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,variable,'*.nc')])
-else:
-    cmd = "".join(['rm -f ',os.path.join(host_path,experiment,realm,'an_trends',time_yrs,'*/*.nc')])
-    #cmd = re.sub(host_path,os.path.join(host_path,'tmp'),cmd) ; ## TEST ##
+# Purge
+cmd = replace(replace(cmd,'ls ','rm -f '),' | wc -l','') ; # Replace count with purge
 # Catch errors with system commands
 ii,o,e = os.popen3(cmd) ; # os.popen3 splits results into input, output and error - consider subprocess function in future ## TEST ##
 print "** *.nc files purged **"
@@ -374,6 +368,9 @@ writeToLog(logfile,"** Generating new *.nc files **")
 # 130820 - 313 - cmip5.MPI-ESM-MR.historical.r3i1p1.an.ocn.thetao.ver-1.1850-2005.xml
 # 130827 - 284 - cmip5.MIROC4h.historical.r1i1p1.an.ocn.so.ver-1.1950-2005.xml - 97% of RAM usage
 # 130904 - 0 - ACCESS1-0.historical.r1i1p1; 30 - CESM1-BGC.historical.r1i1p1 and 80 - CNRM-CM5.piControl.r1i1p1
+# 131105 - 295 - cmip5.MIROC4h.historical.r2i1p1 - 100% RAM usage
+# 131105 - 309 - cmip5.MPI-ESM-MR.historical.r1i1p1
+# 131105 - 20 - cmip5.CCSM4.historical.r4i1p1
 for filecount,l in enumerate(filelist):
     filecount_s = '%06d' % (filecount+1)
     print "".join(['** Processing: ',filecount_s,' ',replace(l,'/work/durack1/Shared/',''),' **'])
@@ -434,24 +431,68 @@ for filecount,l in enumerate(filelist):
         continue
 
     # Check units and correct in case of salinity
-    if var == 'so' or var == 'sos':
+    if var in ['so','sos']:
         [d,_] = fixVarUnits(d,var,report=True)
-    # Create ~50-yr linear trend - with period dependent on experiment
-    (slope),(slope_err) = linearregression(fixInterpAxis(d),error=1,nointercept=1)
-    # Inflate slope from single year to length of record
-    slope           = slope*len(d)
-    slope_err       = slope_err*len(d)
-    slope           = slope.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
-    slope_err       = slope_err.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
+    
+    # Create linear trend and climatology
+    if var in ['so','thetao','uo','vo'] and model in ['MIROC4h','MPI-ESM-MR']: # Deal with memory limits for 3D variables - Build output arrays
+        clim        = np.ma.zeros([1,d.shape[1],d.shape[2],d.shape[3]])        
+        slope       = np.ma.zeros([d.shape[1],d.shape[2],d.shape[3]])
+        slope_err   = np.ma.zeros([d.shape[1],d.shape[2],d.shape[3]])
+        if model in 'MIROC4h':
+            level_count = 5; # 10: ~38%; 20: ~70%
+        elif model in 'MPI-ESM-MR':
+            level_count = 20 ; # 20: ~23%
+        # CCSM4 ~25% - next largest grid - no need to loop over levels
+        for depth in range(0,((d.shape[1])-1),level_count):
+            print "".join(['lev: ',format(depth,'02d'),' of ',str((d.shape[1])-1)])
+            d_level = d(lev=slice(depth,depth+level_count,1))
+            # Generate climatology
+            clim_lev                            = cdu.YEAR.climatology(d_level)
+            clim[0,depth:depth+level_count,...] = clim_lev
+            # Generate slope
+            (slope_lev),(slope_err_lev) = linearregression(fixInterpAxis(d_level),error=1,nointercept=1)
+            # Inflate slope from single year to length of record
+            slope[depth:depth+level_count,...]       = slope_lev*len(d) ; # Correct back to X-yr equivalent
+            slope_err[depth:depth+level_count,...]   = slope_err_lev*len(d)
+            del(d_level)
+        # Convert numpy arrays to cdms variables
+        clim            = cdm.createVariable(clim,id='clim')
+        clim.setAxis(0,clim_lev.getAxis(0)) ; del(clim_lev)
+        clim.setAxis(1,d.getAxis(1))
+        clim.setAxis(2,d.getAxis(2))
+        clim.setAxis(3,d.getAxis(3))
+        slope           = cdm.createVariable(slope,id='slope')
+        slope.setAxis(0,d.getAxis(1))                    
+        slope.setAxis(1,d.getAxis(2))
+        slope.setAxis(2,d.getAxis(3))
+        slope.units     = slope_lev.units ; del(slope_lev)
+        slope_err       = cdm.createVariable(slope_err,id='slope_err')
+        slope_err.setAxis(0,d.getAxis(1))
+        slope_err.setAxis(1,d.getAxis(2))
+        slope_err.setAxis(2,d.getAxis(3))
+        slope_err.units = slope_err_lev.units ; del(slope_err_lev) ; gc.collect()
+    else: # Deal with 2D or smaller gridded 3D data
+        # Create climatology
+        clim                = cdu.YEAR.climatology(d())
+        # Generate slope
+        (slope),(slope_err) = linearregression(fixInterpAxis(d),error=1,nointercept=1)
+        # Inflate slope from single year to length of record
+        slope               = slope*len(d) ; # Correct back to X-yr equivalent
+        slope_err           = slope_err*len(d)
+    # Delete excess variables
+    if 'level_count' in locals():
+        del(level_count,depth)
+    del(d) ; gc.collect()
+    # Recast from float64 back to float32 precision - halve output file sizes
+    clim            = clim.astype('float32')
+    slope           = slope.astype('float32')
+    slope_err       = slope_err.astype('float32')
+    # Add/edit variable attributes
+    clim.comment    = "".join([time_yrs,' climatological mean'])
     slope.comment   = "".join([time_yrs,' change'])
     slope.units     = re.sub('per years',"".join(['per ',time_length,' years']),slope.units)
-    slope_err.units = re.sub('per years',"".join(['per ',time_length,' years']),slope_err.units)
-    # Create ~50-yr mean climatology
-    clim            = cdu.YEAR.climatology(d())
-    clim            = clim.astype('float32') ; # Recast from float64 back to float32 precision - half output file sizes
-    clim.comment    = "".join([time_yrs,' climatological mean'])
-    # Delete excess variables
-    del(d) ; gc.collect()
+    slope_err.units = re.sub('per years',"".join(['per ',time_length,' years']),slope_err.units)    
     
     # Attempt drift estimate
     if model_suite in 'cmip5' and driftcorrect:
@@ -695,12 +736,12 @@ for filecount,l in enumerate(filelist):
         print "** File exists.. removing **"
         os.remove(outfile)
     f_out = cdm.open(outfile,'w')
-    # Write new outfile global atts
-    globalAttWrite(f_out,options=None) ; # Use function to write standard global atts to output file
     # Copy across global attributes from source file - do this first, then write again so new info overwrites
     for i,key in enumerate(f_in.attributes.keys()):
         setattr(f_out,key,f_in.attributes.get(key))
     del(i,key) ; gc.collect()
+    # Write new outfile global atts
+    globalAttWrite(f_out,options=None) ; # Use function to write standard global atts to output file
     # Write to output file
     f_out.write(clim) ; # Write clim first as it has all grid stuff
     if 'slope_drift1' in locals():
