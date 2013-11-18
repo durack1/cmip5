@@ -249,6 +249,7 @@ PJD 26 Aug 2013     - Removed atm_vars2 variable included in atm_vars and cleane
 PJD 27 Aug 2013     - Cleaned up issues with latest code checks
 PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from files to speed up processing - speed up ~4x
 PJD 16 Sep 2013     - Import of cdms2 prompts user for yes/no logging query (since 1.4.0rc1) causing hangs - commented out cdms2 import in response
+PJD 18 Nov 2013     - Added amipFuture experiment (Mark Z requested)
                     - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     - TODO: Add model masternodes
@@ -394,7 +395,7 @@ def pathToFile(inpath,start_time,queue1):
             i1 = i1 + 1 ; # Increment counter
     
     # Create variable and realm names
-    experiments = ['1pctCO2','abrupt4xCO2','amip','historical','historicalExt','historicalGHG','historicalMisc',
+    experiments = ['1pctCO2','abrupt4xCO2','amip','amipFuture','historical','historicalExt','historicalGHG','historicalMisc',
                    'historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
     temporal    = ['fx','mon'] ; # For months and fixed fields only
     atm_vars    = ['cl','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
