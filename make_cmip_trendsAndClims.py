@@ -423,6 +423,10 @@ for filecount,l in enumerate(filelist):
     # Standard read
     try:
         d = f_in(var,time=(start_yr_ct,end_yr_ct,'con'))
+        #t = d.getAxis(0)
+        #print 'start: ',start_yr_ct,' ',t.asComponentTime()[0]
+        #print 'end  : ',end_yr_ct,' ',t.asComponentTime()[-1]
+        #sys.exit()
     except:
         logtime_now = datetime.datetime.now()
         logtime_format = logtime_now.strftime("%y%m%d_%H%M%S")

@@ -98,6 +98,7 @@ PJD 31 Jul 2013     - Replaced all unit fixes with fixVarUnits function
 PJD  4 Aug 2013     - Fixed problem with str to int casting in filelist loop
 PJD  4 Aug 2013     - Removed del(time_format,time_now) as hangovers from globalAttWrite pre-function call
 PJD  9 Sep 2013     - Added both cmip3 & 5 support to this script through arguments - new file validation required
+                    - TODO: Add EC-EARTH mask fix (and other model issues to be resolved)
                     - TODO: Start correcting issued files, use /work/cmip5/12xxxx_cmip5_pathologies.txt to document and deal with these
                     - TODO: Consider reporting and logging memory usage resource.getrusage(resource.RUSAGE_SELF).ru_maxrss should return this
                     - TODO: Consider multiplying WFO/PR by 86400 to get to correct comparable units (cmip3) code commented below

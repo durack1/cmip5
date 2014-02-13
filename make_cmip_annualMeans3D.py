@@ -71,6 +71,7 @@ PJD  9 Aug 2013     - Renamed to make_cmip_annualMeans3D.py (was cmip5)
 PJD 12 Aug 2013     - Added try/except wrapper around file read (with time bounds)
 PJD 12 Aug 2013     - Updated df call to specifically target /work - was hanging due to non-responsive CSS01
 PJD 26 Aug 2013     - Added shebang for system-wide execute
+                    - TODO: Add EC-EARTH mask fix (and other model issues to be resolved)
                     - TODO: Add file existence check before writing, just to make sure that duplicate (reversed) jobs don't overwrite one another
                     - TODO: Fix issue with final years of 3D files being +1 (HadGEM-AO/CC are good models to validate these fixes)
                     - TODO: Add sanity checks, so first month is Jan, 12th month is December, 12th-last month is Jan and last month is December - otherwise sub-index
