@@ -250,6 +250,7 @@ PJD 27 Aug 2013     - Cleaned up issues with latest code checks
 PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from files to speed up processing - speed up ~4x
 PJD 16 Sep 2013     - Import of cdms2 prompts user for yes/no logging query (since 1.4.0rc1) causing hangs - commented out cdms2 import in response
 PJD 18 Nov 2013     - Added amipFuture experiment (Mark Z requested)
+PJD 24 Mar 2014     - Added tauuo and tauvo variables to ocn realm
                     - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     - TODO: Add model masternodes
@@ -406,7 +407,7 @@ def pathToFile(inpath,start_time,queue1):
     fx_vars     = ['areacella','areacello','basin','deptho','orog','sftlf','sftof','volcello'] ; fx_vars.sort()
     land_vars   = ['mrro','mrros','tsl'] ; land_vars.sort()
     ocn_vars    = ['agessc','cfc11','evs','ficeberg','friver','mfo','mlotst','omlmax','rhopoto','sfriver',
-                   'so','soga','sos','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr','vsfevap','vsfpr',
+                   'so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr','vsfevap','vsfpr',
                    'vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
     seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
     len_vars    = len(atm_vars)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
