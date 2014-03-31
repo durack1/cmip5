@@ -64,6 +64,7 @@ PJD 12 Jun 2013     - Added NorESM1-ME.historical.r1
 PJD 12 Jun 2013     - Added MPI-ESM-MR.historical.r2/3
 PJD 12 Sep 2013     - Added shebang
 PJD 12 Sep 2013     - Replaced log writes with writeToLog function
+PJD 31 Mar 2014     - Added historicalNat to experiment list
                     - TODO: Hunt down issue with incorrect branch_time reported for bcc-csm1-1-m.r1i1p1.1pctCO2 - reported 160-1-1 should be 240-1-1
                     - TODO: piControl_info isn't saving correct start years IPSL-CM5A-LR.historical.r1i1p1 reports 2370 not 1850
                     - TODO: lost branch_time difference reporting (121009_* file) smaller when compared to 121024_* although
@@ -103,7 +104,7 @@ os.chdir(host_path)
 
 # Create directory list - piControl first then order by model
 data_paths = []
-for experiment in ['piControl','historical','rcp26','rcp45','rcp60','rcp85','1pctCO2','abrupt4xCO2']:
+for experiment in ['piControl','historical','historicalNat','rcp26','rcp45','rcp60','rcp85','1pctCO2','abrupt4xCO2']:
     data_files1 = [] ; data_paths1 = []
     for (path, dirs, files) in os.walk(os.path.join(host_path,experiment),'false'):
         if ('/ncs/' in path) or ('/an_clims/' in path) or ('/an_trends/' in path):
