@@ -94,6 +94,7 @@ PJD  4 Sep 2013     - Added drift attribute to outfile path
 PJD 29 Oct 2013     - Added variables to valid list (sic,sit,sos..)
 PJD  5 Nov 2013     - Updated to loop over depths in 3D data MIROC4h, MPI-ESM-MR
 PJD  5 Nov 2013     - Cleaned up path count/purge code now drift code is implemented
+PJD  1 Apr 2014     - Implemented kludge for historicalNat drift estimation
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -502,12 +503,17 @@ for filecount,l in enumerate(filelist):
     if model_suite in 'cmip5' and driftcorrect:
         try:
             #if cmip5_branch_time_dict.get("ACCESS1-0",{}).get("historical",{}).has_key("r1i1p1"):
-            if cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(outfile.split('/')[-1].split('.')[2],{}).has_key(outfile.split('/')[-1].split('.')[3]):
-                branch_time_comp    = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][outfile.split('/')[-1].split('.')[2]][outfile.split('/')[-1].split('.')[3]]['branch_time_comp']
+            ##if cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(outfile.split('/')[-1].split('.')[2],{}).has_key(outfile.split('/')[-1].split('.')[3]):
+            if outfile.split('/')[-1].split('.')[2] == 'historicalNat':
+                testExp = 'historical'
+            if cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(testExp,{}).has_key(outfile.split('/')[-1].split('.')[3]):
+                ##branch_time_comp    = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][outfile.split('/')[-1].split('.')[2]][outfile.split('/')[-1].split('.')[3]]['branch_time_comp']
+                branch_time_comp    = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][testExp][outfile.split('/')[-1].split('.')[3]]['branch_time_comp']
                 bits                = branch_time_comp.split(' ')
                 compt               = cdt.comptime(int(bits[0].split('-')[0]),int(bits[0].split('-')[1]),int(bits[0].split('-')[2])) ; # HHMMSS are assumed
                 # Get parent_exp_rip
-                parent_exp_rip      = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][outfile.split('/')[-1].split('.')[2]][outfile.split('/')[-1].split('.')[3]]['parent_exp_rip']
+                ##parent_exp_rip      = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][outfile.split('/')[-1].split('.')[2]][outfile.split('/')[-1].split('.')[3]]['parent_exp_rip']
+                parent_exp_rip      = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][testExp][outfile.split('/')[-1].split('.')[3]]['parent_exp_rip']
                 # Determine start year of historical
                 an_start_year       = np.int(f_in.an_start_year)
                 # Determine offset from historical first/last years
@@ -518,7 +524,8 @@ for filecount,l in enumerate(filelist):
                 drift_end           = compt.add(offset_end,cdt.Year) ; # Add offsets to picontrol time
                 
                 # Determine whether piControl file/data overlap exists
-                drift_file = os.path.join(replace(l[0:l.rfind('/')],'historical','piControl'),".".join(['cmip5',model,parent_exp_rip,'*']))
+                ##drift_file = os.path.join(replace(l[0:l.rfind('/')],'historical','piControl'),".".join(['cmip5',model,parent_exp_rip,'*']))
+                drift_file = os.path.join(replace(l[0:l.rfind('/')],'historicalNat','piControl'),".".join(['cmip5',model,parent_exp_rip,'*']))
                 drift_file = glob.glob(drift_file) ; # Returns first file, not latest (by date)
                 if drift_file == []:
                     print "** No drift file found **"
