@@ -251,6 +251,7 @@ PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from 
 PJD 16 Sep 2013     - Import of cdms2 prompts user for yes/no logging query (since 1.4.0rc1) causing hangs - commented out cdms2 import in response
 PJD 18 Nov 2013     - Added amipFuture experiment (Mark Z requested)
 PJD 24 Mar 2014     - Added tauuo and tauvo variables to ocn realm
+PJD 12 May 2014     - Added rluscs to the variable list (Mark Z requested) 
                     - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     - TODO: Add model masternodes
@@ -400,7 +401,7 @@ def pathToFile(inpath,start_time,queue1):
                    'historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
     temporal    = ['fx','mon'] ; # For months and fixed fields only
     atm_vars    = ['cl','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
-                   'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rlut',
+                   'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rluscs','rlut',
                    'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
                    'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
     atmOrocn    = ['atm','ocn'] ; atmOrocn.sort()
