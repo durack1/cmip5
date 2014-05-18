@@ -95,6 +95,7 @@ PJD 29 Oct 2013     - Added variables to valid list (sic,sit,sos..)
 PJD  5 Nov 2013     - Updated to loop over depths in 3D data MIROC4h, MPI-ESM-MR
 PJD  5 Nov 2013     - Cleaned up path count/purge code now drift code is implemented
 PJD  1 Apr 2014     - Implemented kludge for historicalNat drift estimation
+PJD 17 May 2014     - Added zos to valid variable list
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -170,7 +171,7 @@ if (args.experiment not in ['all','1pctCO2','abrupt4xCO2','amip','historical','h
 if (args.realm not in ['all','atm','land','ocn','seaIce']):
     print "** No valid realm specified - no *.nc files will be written **"
     sys.exit()
-if (args.variable not in ['all','pr','sic','sit','so','sos','tas','thetao','tos','vo','wfo','zostoga']):
+if (args.variable not in ['all','pr','sic','sit','so','sos','tas','thetao','tos','vo','wfo','zos','zostoga']):
     print "** No valid variable specified - no *.nc files will be written **"
     sys.exit()
 if (args.driftcorrect in ['True','False']):
@@ -303,7 +304,7 @@ del(filelist1,filelist2) ; gc.collect()
 # Trim out variables and experiments of no interest
 vars_atm_exclude = ['evspsbl','hfls','hfss','hurs','huss','prw','ps','psl','rlds','rlus','rsds',
                     'rsus','sfcWind','tasmax','tasmin','tauu','tauv','ts','uas','vas']
-vars_ocn_exclude = ['soga','zos','uo']
+vars_ocn_exclude = ['soga','uo']
 vars_exclude	 = ['sci','rsdscs','ua','rlutcs','prc','rsuscs','ta','wap''cl','hur',
                      'rlds','sbl','rsdt','zg','clt','hus','mc','rsut','rlut','rsutcs',
                      'rsus','va','rldscs','cli','clw']
