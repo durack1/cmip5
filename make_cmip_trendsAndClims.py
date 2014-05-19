@@ -96,6 +96,7 @@ PJD  5 Nov 2013     - Updated to loop over depths in 3D data MIROC4h, MPI-ESM-MR
 PJD  5 Nov 2013     - Cleaned up path count/purge code now drift code is implemented
 PJD  1 Apr 2014     - Implemented kludge for historicalNat drift estimation
 PJD 17 May 2014     - Added zos to valid variable list
+PJD 19 May 2014     - Tweaks to get zos drift working
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -505,7 +506,7 @@ for filecount,l in enumerate(filelist):
         try:
             #if cmip5_branch_time_dict.get("ACCESS1-0",{}).get("historical",{}).has_key("r1i1p1"):
             ##if cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(outfile.split('/')[-1].split('.')[2],{}).has_key(outfile.split('/')[-1].split('.')[3]):
-            if outfile.split('/')[-1].split('.')[2] == 'historicalNat':
+            if outfile.split('/')[-1].split('.')[2] in ['historical','historicalNat']:
                 testExp = 'historical'
             if cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(testExp,{}).has_key(outfile.split('/')[-1].split('.')[3]):
                 ##branch_time_comp    = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][outfile.split('/')[-1].split('.')[2]][outfile.split('/')[-1].split('.')[3]]['branch_time_comp']
@@ -526,7 +527,7 @@ for filecount,l in enumerate(filelist):
                 
                 # Determine whether piControl file/data overlap exists
                 ##drift_file = os.path.join(replace(l[0:l.rfind('/')],'historical','piControl'),".".join(['cmip5',model,parent_exp_rip,'*']))
-                drift_file = os.path.join(replace(l[0:l.rfind('/')],'historicalNat','piControl'),".".join(['cmip5',model,parent_exp_rip,'*']))
+                drift_file = os.path.join(replace(l[0:l.rfind('/')],testExp,'piControl'),".".join(['cmip5',model,parent_exp_rip,'*']))
                 drift_file = glob.glob(drift_file) ; # Returns first file, not latest (by date)
                 if drift_file == []:
                     print "** No drift file found **"
