@@ -97,6 +97,7 @@ PJD  5 Nov 2013     - Cleaned up path count/purge code now drift code is impleme
 PJD  1 Apr 2014     - Implemented kludge for historicalNat drift estimation
 PJD 17 May 2014     - Added zos to valid variable list
 PJD 19 May 2014     - Tweaks to get zos drift working
+PJD 20 May 2014     -logic fixes for zos driftcorrect (should be applicable for other vars)
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
