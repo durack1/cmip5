@@ -374,6 +374,12 @@ writeToLog(logfile,"** Generating new *.nc files **")
 # 131105 - 295 - cmip5.MIROC4h.historical.r2i1p1 - 100% RAM usage
 # 131105 - 309 - cmip5.MPI-ESM-MR.historical.r1i1p1
 # 131105 - 20 - cmip5.CCSM4.historical.r4i1p1
+
+# Test for driftcorrect logic
+#print len(filelist)
+#print filelist[240]
+#sys.exit()
+
 for filecount,l in enumerate(filelist):
     filecount_s = '%06d' % (filecount+1)
     print "".join(['** Processing: ',filecount_s,' ',replace(l,'/work/durack1/Shared/',''),' **'])
@@ -508,6 +514,8 @@ for filecount,l in enumerate(filelist):
             ##if cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(outfile.split('/')[-1].split('.')[2],{}).has_key(outfile.split('/')[-1].split('.')[3]):
             if outfile.split('/')[-1].split('.')[2] in ['historical','historicalNat']:
                 testExp = 'historical'
+            #print cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(testExp,{}).has_key(outfile.split('/')[-1].split('.')[3])
+            #print outfile.split('/')[-1].split('.')[1],testExp,outfile.split('/')[-1].split('.')[3]
             if cmip5_branch_time_dict.get(outfile.split('/')[-1].split('.')[1],{}).get(testExp,{}).has_key(outfile.split('/')[-1].split('.')[3]):
                 ##branch_time_comp    = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][outfile.split('/')[-1].split('.')[2]][outfile.split('/')[-1].split('.')[3]]['branch_time_comp']
                 branch_time_comp    = cmip5_branch_time_dict[outfile.split('/')[-1].split('.')[1]][testExp][outfile.split('/')[-1].split('.')[3]]['branch_time_comp']
@@ -563,7 +571,9 @@ for filecount,l in enumerate(filelist):
                     yr_count        = drift_end.year-drift_start.year
                     print "".join(['** Less than required 150-yrs: ',str(yr_count),' skipping model **'])
                     writeToLog(logfile,"".join(['** Less than required 150-yrs: ',str(yr_count),' skipping model **']))
-                    trip_try #continue
+                    #trip_try
+                    if driftcorrect:
+                        continue ; # Skip in case of driftcorrect
                             
                 # Loop over vertical levels if ocean var
                 if var in ['so','thetao']:
@@ -705,7 +715,9 @@ for filecount,l in enumerate(filelist):
                 
             else:
                 print "".join(['** KeyError: ',model,' - no branch_time information exists: Drift estimate failed **'])
-                writeToLog(logfile,"".join(['** KeyError: ',model,' - no branch_time information exists: Drift estimate failed **']))  
+                writeToLog(logfile,"".join(['** KeyError: ',model,' - no branch_time information exists: Drift estimate failed **']))
+                if driftcorrect:
+                    continue ; # Skip in case of driftcorrect
             # if cmip5_branch_time_dict.get ...  
         
         except Exception,err:
