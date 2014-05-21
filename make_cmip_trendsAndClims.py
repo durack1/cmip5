@@ -97,7 +97,8 @@ PJD  5 Nov 2013     - Cleaned up path count/purge code now drift code is impleme
 PJD  1 Apr 2014     - Implemented kludge for historicalNat drift estimation
 PJD 17 May 2014     - Added zos to valid variable list
 PJD 19 May 2014     - Tweaks to get zos drift working
-PJD 20 May 2014     -logic fixes for zos driftcorrect (should be applicable for other vars)
+PJD 20 May 2014     - logic fixes for zos driftcorrect (should be applicable for other vars)
+PJD 21 May 2014     - Replaced trip_try statements with if driftcorrect: continues
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
@@ -541,7 +542,9 @@ for filecount,l in enumerate(filelist):
                 if drift_file == []:
                     print "** No drift file found **"
                     writeToLog(logfile,"** No drift file found **")
-                    trip_try #continue
+                    #trip_try
+                    if driftcorrect:
+                        continue ; # Skip in case of driftcorrect
                 drift_file = drift_file[0] ; # Use first indexed
                 print ''.join(['   drift_file:        ',replace(drift_file,'/work/durack1/Shared/','')])
                 writeToLog(logfile,''.join(['drift_file: ',replace(drift_file,'/work/durack1/Shared/','')]))
@@ -551,14 +554,18 @@ for filecount,l in enumerate(filelist):
                     # Case: cmip5/piControl/atm/an/pr/cmip5.MIROC4h.piControl.r1i1p1.an.atm.Amon.pr.ver-1.0051-0150.nc
                     print "** File calendars differ, skipping model **"
                     writeToLog(logfile,"** File calendars differ, skipping model **")
-                    trip_try #continue
+                    #trip_try
+                    if driftcorrect:
+                        continue ; # Skip in case of driftcorrect
                 d_h = f_drift[var]
                 # Do sanity check to ensure that grids align
                 if clim.getLatitude().shape != d_h.getLatitude().shape:
                      # Case: cmip5/historical/seaIce/an/pr/cmip5.BNU-ESM.historical.r1i1p1.an.seaIce.OImon.pr.ver-1.1850-2005.nc
                     print "** File grids differ, skipping model **"
                     writeToLog(logfile,"** File grids differ, skipping model **")
-                    trip_try #continue                    
+                    #trip_try
+                    if driftcorrect:
+                        continue ; # Skip in case of driftcorrect
     
                 # Check start and end years - skip drift if not > 150
                 t = d_h.getAxis(0)
