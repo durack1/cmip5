@@ -251,23 +251,26 @@ PJD 28 Aug 2013     - Turned off metadata scan (creation_date/tracking_id) from 
 PJD 16 Sep 2013     - Import of cdms2 prompts user for yes/no logging query (since 1.4.0rc1) causing hangs - commented out cdms2 import in response
 PJD 18 Nov 2013     - Added amipFuture experiment (Mark Z requested)
 PJD 24 Mar 2014     - Added tauuo and tauvo variables to ocn realm
-PJD 12 May 2014     - Added rluscs to the variable list (Mark Z requested) 
-                    - TODO: Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
+PJD 12 May 2014     - Added rluscs to the variable list (Mark Z requested)
+PJD  7 Aug 2014     - Updated to include new path /cmip5_css02/cmip5
+PJD  7 Aug 2014     - Added exception descriptor - '** Crash while trying to create a new directory: '
+                    - TODO: 
+                    Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
-                    - TODO: Add model masternodes
-                    - TODO: Fix issue with no valid files being recorded
-                    - TODO: Add permissions wash over new xml files once copied in place (only an issue on oceanonly)
-                    - TODO: Placing read test in pathToFile will trim out issues with 0-sized files and read permissions, so reporting may need to be relocated
-                    - TODO: Add counters for lat1 vs lat0
-                    - TODO: Report new runtimeError in cdscan - problems with overlapping times, issue in combineKeys function - Report to Jeff/Charles
-                    - TODO: Added demo code from Charles to convert processes and queues into lists of objects thereby subverting hard-coding and parallel limits
-                    - TODO: update for gdo2_data (~8k; 2.2hrs) and css02_scratch (~25k; 7hrs) to scour using multiple threads each - what is the IO vs wait difference?
-                      consider using multiprocess.pool to achieve this, so full loads until job(s) are completed
-                    - TODO: Consider using multiprocess.pool (which loads up processes concurrently) rather than multiprocess.Process
-                    - TODO: Consider adding a ./running file with 0/1 binary for new job to poll before it begins - overruns are a continuing issue
-                      Ensure this file contains the PID of the parent process, so this can be checked for life before attempting to move mo_new to mo dirs
-                    - TODO: Fix duplicate versions - add flag for latest or deprecated - awaiting Bob to create index file as esgquery_index wont cope with 40k queries
-                    Conditionally purge xmls with earlier version number (should sort so last generated file is latest)
+                    Add model masternodes
+                    Fix issue with no valid files being recorded
+                    Add permissions wash over new xml files once copied in place (only an issue on oceanonly)
+                    Placing read test in pathToFile will trim out issues with 0-sized files and read permissions, so reporting may need to be relocated
+                    Add counters for lat1 vs lat0
+                    Report new runtimeError in cdscan - problems with overlapping times, issue in combineKeys function - Report to Jeff/Charles
+                    Added demo code from Charles to convert processes and queues into lists of objects thereby subverting hard-coding and parallel limits
+                    update for gdo2_data (~8k; 2.2hrs) and css02_scratch (~25k; 7hrs) to scour using multiple threads each - what is the IO vs wait difference?
+                     consider using multiprocess.pool to achieve this, so full loads until job(s) are completed
+                    Consider using multiprocess.pool (which loads up processes concurrently) rather than multiprocess.Process
+                    Consider adding a ./running file with 0/1 binary for new job to poll before it begins - overruns are a continuing issue
+                     Ensure this file contains the PID of the parent process, so this can be checked for life before attempting to move mo_new to mo dirs
+                    Fix duplicate versions - add flag for latest or deprecated - awaiting Bob to create index file as esgquery_index wont cope with 40k queries
+                     Conditionally purge xmls with earlier version number (should sort so last generated file is latest)
                     [durack1@crunchy output1]$ pwd
                     /cmip5_gdo2/data/cmip5/output1
                     [durack1@crunchy output1]$ ncdump -h NOAA-GFDL/GFDL-CM3/historical/mon/atmos/Amon/r1i1p1/tas/1/tas_Amon_GFDL-CM3_historical_r1i1p1_186001-186412.nc | grep tracking_id
@@ -532,7 +535,8 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
         # At first run create output directories
         try:
             os.makedirs(os.path.join(host_path,out_path))
-        except:
+        except Exception,err:
+            print 'Exception thrown: ',err
             print "".join(['** Crash while trying to create a new directory: ',os.path.join(host_path,out_path)])                
     
     if os.path.isfile(outfileName):
@@ -777,6 +781,13 @@ queue6 = manager0.Queue(maxsize=0)
 p6 = Process(target=pathToFile,args=('/cmip5_css01/scratch/cmip5/',start_time,queue6))
 p6.start() ; print "".join(['p6 pid: ',str(p6.ident)])
 
+
+# css02_cmip5
+queue7 = manager0.Queue(maxsize=0)
+p7 = Process(target=pathToFile,args=('/cmip5_css02/cmip5/data/cmip5/',start_time,queue7))
+p7.start() ; print "".join(['p7 pid: ',str(p7.ident)])
+
+
 # Consider parallelising css02_scratch in particular - queue object doesn't play with p.map
 '''
 http://stackoverflow.com/questions/7588620/os-walk-multiple-directories-at-once
@@ -835,6 +846,11 @@ p5.join()
 logWrite(logfile,time_since_start,'css01_data',i1,css01_data_outfiles,len_vars)
 
 
+p7.join()
+[css02_cm5_outfiles,css02_cm5_outfiles_paths,time_since_start,i1,i2,len_vars] = queue7.get_nowait()
+logWrite(logfile,time_since_start,'css02_cmip5',i1,css02_cm5_outfiles,len_vars)
+
+
 # Generate master lists from sublists
 outfiles_paths = list(gdo2_data_outfiles_paths)
 outfiles_paths.extend(gdo2_scratch_outfiles_paths) ; # Add gdo2_scratch to master
@@ -842,12 +858,22 @@ outfiles_paths.extend(css02_data_outfiles_paths) ; # Add css02_data to master
 outfiles_paths.extend(css02_scratch_outfiles_paths) ; # Add css02_scratch to master
 outfiles_paths.extend(css01_data_outfiles_paths) ; # Add css01_data to master
 outfiles_paths.extend(css01_scratch_outfiles_paths) ; # Add css01_scratch to master
+
+
+outfiles_paths.extend(css02_cm5_outfiles_paths) ; # Add css02_cmip5 to master
+
+
 outfiles = list(gdo2_data_outfiles)
 outfiles.extend(gdo2_scratch_outfiles) ; # Add gdo2_scratch to master
 outfiles.extend(css02_data_outfiles) ; # Add css02_data to master
 outfiles.extend(css02_scratch_outfiles) ; # Add css02_scratch to master
 outfiles.extend(css01_data_outfiles) ; # Add css01_data to master
 outfiles.extend(css01_scratch_outfiles) ; # Add css01_scratch to master
+
+
+outfiles.extend(css02_cm5_outfiles) ; # Add css02_cmip5 to master
+
+
 # Sort lists by outfiles
 outfilesAndPaths = zip(outfiles,outfiles_paths)
 outfilesAndPaths.sort() ; # sort by str value forgetting case - key=str.lower; requires str object
