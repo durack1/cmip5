@@ -254,12 +254,17 @@ PJD 24 Mar 2014     - Added tauuo and tauvo variables to ocn realm
 PJD 12 May 2014     - Added rluscs to the variable list (Mark Z requested)
 PJD  7 Aug 2014     - Updated to include new path /cmip5_css02/cmip5
 PJD  7 Aug 2014     - Added exception descriptor - '** Crash while trying to create a new directory: '
+PJD  8 Aug 2014     - Updated path indexing to deal with /cmip5_css02/cmip5/data/ case
+PJD  8 Aug 2014     - Added exception descriptor in pathToFile function
+PJD  8 Aug 2014     - General code tidyup and increased xmlGood to 1e5 (was 4e4)
+PJD  8 Aug 2014     - Current data shows 3715 (144706-140991) duplicate xml files are listed
+                      presently no intelligent selection of file is done or validation that the version selected is valid
                     - TODO: 
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     Add model masternodes
                     Fix issue with no valid files being recorded
-                    Add permissions wash over new xml files once copied in place (only an issue on oceanonly)
+                    Add permissions wash over new xml files once copied in place (issue on oceanonly alone)
                     Placing read test in pathToFile will trim out issues with 0-sized files and read permissions, so reporting may need to be relocated
                     Add counters for lat1 vs lat0
                     Report new runtimeError in cdscan - problems with overlapping times, issue in combineKeys function - Report to Jeff/Charles
@@ -370,6 +375,7 @@ def mkdirs(newdir,mode=0777):
         if err.errno != errno.EEXIST or not os.path.isdir(newdir):
             raise
 
+
 def sysCallTimeout(cmd,timeout):
     start = time.time()
     p = Popen(cmd)
@@ -383,7 +389,7 @@ def sysCallTimeout(cmd,timeout):
 
 # Debug code for duplicate removal/checking
 #import os,pickle
-#picklefile = '/work/cmip5/_logs/130531_181358_list_outfiles.pickle'
+#picklefile = '/work/cmip5/_logs/140808_155431_list_outfiles.pickle'
 #f = open(picklefile,'r')
 #outfiles,outfiles_new,outfiles_paths,outfiles_paths_new = pickle.load(f)
 #f.close()
@@ -429,59 +435,58 @@ def pathToFile(inpath,start_time,queue1):
     data_outfiles = [] ; data_outfiles_paths = [] ; i2 = 0
     for path in data_paths:
         path_bits   = path.split('/')
+        # Set indexing
+        if 'data' in path_bits:
+            pathIndex = path_bits.index('data')
+        elif 'scratch' in path_bits:
+            pathIndex = path_bits.index('scratch')
+        
         try:
-            model       = path_bits[6]
-            experiment  = path_bits[7]
-            time_ax     = path_bits[8]
-            realm       = path_bits[9]
-            tableId     = path_bits[10]
+            model       = path_bits[pathIndex+4] ; #6
+            experiment  = path_bits[pathIndex+5] ; #7
+            time_ax     = path_bits[pathIndex+6] ; #8
+            realm       = path_bits[pathIndex+7] ; #9
+            tableId     = path_bits[pathIndex+8] ; #10
             # Fix realms to standard acronyms
-            if (realm == "ocean"):
+            if (realm == 'ocean'):
                 realm = 'ocn'
-            elif (realm == "atmos"):
+            elif (realm == 'atmos'):
                 realm = 'atm'
-            realisation = path_bits[11]
+            realisation = path_bits[pathIndex+9] ; #11
             # Check for source path and order variable/version info
-            if path_bits[2] in 'scratch':
-                version     = path_bits[12]
-                variable    = path_bits[13]
-            elif path_bits[2] in 'data':
-                version     = path_bits[13]
-                variable    = path_bits[12]
+            if 'scratch' in path_bits:
+                version     = path_bits[pathIndex+10] ; #12
+                variable    = path_bits[pathIndex+11] ; #13
+            elif 'data' in path_bits:
+                version     = path_bits[pathIndex+11] ; #13
+                variable    = path_bits[pathIndex+10] ; #12
             # Getting versioning/latest info
-            #print 'path read'
             testfile = os.listdir(path)[0]
             #print "".join(['file found: ',testfile])            
             # Test for zero-size file before trying to open
             #print os.path.join(path,testfile)
             fileinfo = os.stat(os.path.join(path,testfile))
-            #print 'fileinfo ok'
             checksize = fileinfo.st_size
-            #print 'checksize ok'
             if checksize == 0:
                 #print "".join(['Zero-sized file: ',path])
                 continue
-            #print 'access check'
             # Read access check
             if os.access(os.path.join(path,testfile),os.R_OK) != True:
                 #print "".join(['No read permissions: ',path])
                 continue
-            #print 'file open'
             #f_h = cdm.open(os.path.join(path,testfile))
-            #print 'file opened'
             #tracking_id     = f_h.tracking_id
             tracking_id = ''
             #creation_date   = f_h.creation_date
             creation_date = ''
             #f_h.close()
-            #print 'call test latest'
             if test_latest(tracking_id,creation_date):
                 lateststr = 'latestX' ; # Placeholder                
                 #lateststr = 'latest1' ; # Latest
             else:
                 lateststr = 'latest0' ; # Not latest
-        except:
-            #print "".join(['Error indexing path: ',path])
+        except Exception,err:
+            print 'pathToFile - Exception:',err,path
             continue
         # Test for list entry and trim experiments and variables to manageable list
         if (experiment in experiments) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars) or (variable in seaIce_vars) or (variable in land_vars) or (variable in fx_vars) ):
@@ -535,8 +540,9 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
         # At first run create output directories
         try:
             os.makedirs(os.path.join(host_path,out_path))
+            #mkdirs(os.path.join(host_path,out_path)) ; # Alternative call to not crash if directory exists
         except Exception,err:
-            print 'Exception thrown: ',err
+            print 'xmlWrite - Exception:',err
             print "".join(['** Crash while trying to create a new directory: ',os.path.join(host_path,out_path)])                
     
     if os.path.isfile(outfileName):
@@ -748,13 +754,6 @@ def test_latest(tracking_id,creation_date):
 # Generate queue objects
 manager0 = Manager()
 ## GDO2 data sources - Mine for paths and files
-# Demo
-'''
-queue0 = manager0.Queue(maxsize=0)
-p0 = Process(target=pathToFile,args=('/cmip5_css02/scratch/cmip5/output1/CSIRO-QCCCE/CSIRO-Mk3-6-0/historical/mon/atmos/Amon',start_time,queue0))
-p0.start() ; p0.join()
-[gdo2_data_outfiles,gdo2_data_outfiles_paths,time_since_start,i1,i2,len_vars] = queue0.get_nowait()
-'''
 # gdo2_data
 queue1 = manager0.Queue(maxsize=0)
 p1 = Process(target=pathToFile,args=('/cmip5_gdo2/data/cmip5/',start_time,queue1))
@@ -780,13 +779,10 @@ p5.start() ; print "".join(['p5 pid: ',str(p5.ident)])
 queue6 = manager0.Queue(maxsize=0)
 p6 = Process(target=pathToFile,args=('/cmip5_css01/scratch/cmip5/',start_time,queue6))
 p6.start() ; print "".join(['p6 pid: ',str(p6.ident)])
-
-
 # css02_cmip5
 queue7 = manager0.Queue(maxsize=0)
 p7 = Process(target=pathToFile,args=('/cmip5_css02/cmip5/data/cmip5/',start_time,queue7))
 p7.start() ; print "".join(['p7 pid: ',str(p7.ident)])
-
 
 # Consider parallelising css02_scratch in particular - queue object doesn't play with p.map
 '''
@@ -832,47 +828,38 @@ logWrite(logfile,time_since_start,'gdo2_scratch',i1,gdo2_scratch_outfiles,len_va
 p1.join()
 [gdo2_data_outfiles,gdo2_data_outfiles_paths,time_since_start,i1,i2,len_vars] = queue1.get_nowait()
 logWrite(logfile,time_since_start,'gdo2_data',i1,gdo2_data_outfiles,len_vars)
-p4.join()
-[css02_scratch_outfiles,css02_scratch_outfiles_paths,time_since_start,i1,i2,len_vars] = queue4.get_nowait()
-logWrite(logfile,time_since_start,'css02_scratch',i1,css02_scratch_outfiles,len_vars)
-p3.join()
-[css02_data_outfiles,css02_data_outfiles_paths,time_since_start,i1,i2,len_vars] = queue3.get_nowait()
-logWrite(logfile,time_since_start,'css02_data',i1,css02_data_outfiles,len_vars)
 p6.join()
 [css01_scratch_outfiles,css01_scratch_outfiles_paths,time_since_start,i1,i2,len_vars] = queue6.get_nowait()
 logWrite(logfile,time_since_start,'css01_scratch',i1,css01_scratch_outfiles,len_vars)
 p5.join()
 [css01_data_outfiles,css01_data_outfiles_paths,time_since_start,i1,i2,len_vars] = queue5.get_nowait()
 logWrite(logfile,time_since_start,'css01_data',i1,css01_data_outfiles,len_vars)
-
-
+p4.join()
+[css02_scratch_outfiles,css02_scratch_outfiles_paths,time_since_start,i1,i2,len_vars] = queue4.get_nowait()
+logWrite(logfile,time_since_start,'css02_scratch',i1,css02_scratch_outfiles,len_vars)
+p3.join()
+[css02_data_outfiles,css02_data_outfiles_paths,time_since_start,i1,i2,len_vars] = queue3.get_nowait()
+logWrite(logfile,time_since_start,'css02_data',i1,css02_data_outfiles,len_vars)
 p7.join()
 [css02_cm5_outfiles,css02_cm5_outfiles_paths,time_since_start,i1,i2,len_vars] = queue7.get_nowait()
 logWrite(logfile,time_since_start,'css02_cmip5',i1,css02_cm5_outfiles,len_vars)
 
-
 # Generate master lists from sublists
 outfiles_paths = list(gdo2_data_outfiles_paths)
 outfiles_paths.extend(gdo2_scratch_outfiles_paths) ; # Add gdo2_scratch to master
-outfiles_paths.extend(css02_data_outfiles_paths) ; # Add css02_data to master
-outfiles_paths.extend(css02_scratch_outfiles_paths) ; # Add css02_scratch to master
 outfiles_paths.extend(css01_data_outfiles_paths) ; # Add css01_data to master
 outfiles_paths.extend(css01_scratch_outfiles_paths) ; # Add css01_scratch to master
-
-
+outfiles_paths.extend(css02_data_outfiles_paths) ; # Add css02_data to master
+outfiles_paths.extend(css02_scratch_outfiles_paths) ; # Add css02_scratch to master
 outfiles_paths.extend(css02_cm5_outfiles_paths) ; # Add css02_cmip5 to master
-
 
 outfiles = list(gdo2_data_outfiles)
 outfiles.extend(gdo2_scratch_outfiles) ; # Add gdo2_scratch to master
-outfiles.extend(css02_data_outfiles) ; # Add css02_data to master
-outfiles.extend(css02_scratch_outfiles) ; # Add css02_scratch to master
 outfiles.extend(css01_data_outfiles) ; # Add css01_data to master
 outfiles.extend(css01_scratch_outfiles) ; # Add css01_scratch to master
-
-
+outfiles.extend(css02_data_outfiles) ; # Add css02_data to master
+outfiles.extend(css02_scratch_outfiles) ; # Add css02_scratch to master
 outfiles.extend(css02_cm5_outfiles) ; # Add css02_cmip5 to master
-
 
 # Sort lists by outfiles
 outfilesAndPaths = zip(outfiles,outfiles_paths)
@@ -886,7 +873,7 @@ outfiles,outfiles_paths = zip(*outfilesAndPaths)
 #badpaths = ['/bad','-old/','/output/','/ICHEC-old1/']
 #bad = GISS-E2-R, EC-EARTH ; -old = CSIRO-QCCCE-old ; /output/ = CSIRO-Mk3-6-0 ; /ICHEC-old1/ = EC-EARTH
 #paths rather than files = CNRM-CM5, FGOALS-g2, bcc-csm1-1
-#duplicates exist between /cmip5_gd02/scratch and /cmip5_css02/scratch = CCSM4. CSIRO-Mk3-6-0
+#duplicates exist between /cmip5_gdo2/scratch and /cmip5_css02/scratch = CCSM4, CSIRO-Mk3-6-0
 outfiles_new = []; outfiles_paths_new = []; counter = 0
 for count,testfile in enumerate(outfiles):
     if count < len(outfiles)-1:
@@ -1068,8 +1055,8 @@ if make_xml:
     writeToLog(logfile,"".join(['** XML file count - Good: ',format(xmlGood-1,"1d"),' **']))
     writeToLog(logfile,"".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d"),' **']))
 
-    # Once run is complete, and xmlGood > 50k, archive old files and move new files into place
-    if xmlGood > 40000:
+    # Once run is complete, and xmlGood > 1e5, archive old files and move new files into place
+    if xmlGood > 1e5:
         time_now = datetime.datetime.now()
         time_format = time_now.strftime("%y%m%d_%H%M%S")
         # Ensure /cmip5 directory is cwd
