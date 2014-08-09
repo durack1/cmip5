@@ -260,9 +260,16 @@ PJD  8 Aug 2014     - Current data shows 3715 (144706-140991) duplicate xml file
                       presently no intelligent selection of file is done or validation that the version selected is valid
 PJD  8 Aug 2014     - Removed shebang statement as new UVCDAT excludes pytz module which causes durolib load to fail
                       python version explicitly set in cron.sh file
+PJD  8 Aug 2014     - Added HadGEM2-AO attempt to recover data and BESM-OA2-3 decadal skip
+                    Fix HadGEM2-AO path problems - missing realm DRS component
+                    pathToFile - Exception: list index out of range ->
+                    /cmip5_css01/scratch/cmip5/output1/NIMR-KMA/HadGEM2-AO/rcp60/mon/atmos/ta/r3i1p1 vs
+                    /cmip5_css02/data/cmip5/output1/CSIRO-BOM/ACCESS1-0/historical/mon/atmos/Amon/r1i1p1/zg/1
+                    Fix BEMS-OA2-3 path problems - missing realm DRS component
+                    pathToFile - Exception: list index out of range ->
+                    /cmip5_css02/scratch/cmip5/output1/INPE/BESM-OA2-3/decadal1990/day/seaIce/sic/r8i1p1
+                    
                     - TODO:
-                    Fix HadGEM2-AO path problems
-                    pathToFile - Exception: list index out of range /cmip5_css01/scratch/cmip5/output1/NIMR-KMA/HadGEM2-AO/rcp60/mon/atmos/ta/r3i1p1
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     Add model masternodes
@@ -314,7 +321,7 @@ threadCount = 40 ; # ~36hrs xml creation solo ; 50hrs xml creation crunchy & oce
 # Set time counter and grab timestamp
 start_time = time.time() ; # Set time counter
 time_now = datetime.datetime.now()
-time_format = time_now.strftime("%y%m%d_%H%M%S")
+time_format = time_now.strftime('%y%m%d_%H%M%S')
 
 # Set conditional whether files are created or just numbers are calculated
 if batch:
@@ -489,8 +496,24 @@ def pathToFile(inpath,start_time,queue1):
             else:
                 lateststr = 'latest0' ; # Not latest
         except Exception,err:
-            print 'pathToFile - Exception:',err,path
-            continue
+            # Case HadGEM2-AO attempt to recover
+            if 'HadGEM2-AO' in model:
+                variable    = path_bits[pathIndex+8]
+                if variable in atm_vars:
+                    tableId = 'Amon'
+                elif variable in ocn_vars:
+                    tableId = 'Omon'
+                elif variable in land_vars:
+                    tableId = 'Lmon'
+                elif variable in seaIce_vars:
+                    tableId = 'OImon'
+                version     = datetime.datetime.fromtimestamp(fileinfo.st_ctime).strftime('%Y%m%d')
+            # Case BESM-OA2-3 skip
+            if 'BESM-OA2-3' in model and 'decadal' in experiment:
+                continue                
+            else:
+                print 'pathToFile - Exception:',err,path
+                continue
         # Test for list entry and trim experiments and variables to manageable list
         if (experiment in experiments) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars) or (variable in seaIce_vars) or (variable in land_vars) or (variable in fx_vars) ):
             data_outfiles.insert(i2,".".join(['cmip5',model,experiment,realisation,time_ax,realm,tableId,variable,"".join(['ver-',version]),lateststr,'xml']))
