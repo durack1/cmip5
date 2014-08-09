@@ -1,4 +1,3 @@
-#!/bin/env python
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jan 23 09:40:47 2012
@@ -259,7 +258,11 @@ PJD  8 Aug 2014     - Added exception descriptor in pathToFile function
 PJD  8 Aug 2014     - General code tidyup and increased xmlGood to 1e5 (was 4e4)
 PJD  8 Aug 2014     - Current data shows 3715 (144706-140991) duplicate xml files are listed
                       presently no intelligent selection of file is done or validation that the version selected is valid
-                    - TODO: 
+PJD  8 Aug 2014     - Removed shebang statement as new UVCDAT excludes pytz module which causes durolib load to fail
+                      python version explicitly set in cron.sh file
+                    - TODO:
+                    Fix HadGEM2-AO path problems
+                    pathToFile - Exception: list index out of range /cmip5_css01/scratch/cmip5/output1/NIMR-KMA/HadGEM2-AO/rcp60/mon/atmos/ta/r3i1p1
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     Add model masternodes
