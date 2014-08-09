@@ -484,11 +484,12 @@ def pathToFile(inpath,start_time,queue1):
             if os.access(os.path.join(path,testfile),os.R_OK) != True:
                 #print "".join(['No read permissions: ',path])
                 continue
+            # Netcdf metadata scour
             #f_h = cdm.open(os.path.join(path,testfile))
             #tracking_id     = f_h.tracking_id
-            tracking_id = ''
             #creation_date   = f_h.creation_date
-            creation_date = ''
+            tracking_id     = ''
+            creation_date   = ''
             #f_h.close()
             if test_latest(tracking_id,creation_date):
                 lateststr = 'latestX' ; # Placeholder                
@@ -497,7 +498,7 @@ def pathToFile(inpath,start_time,queue1):
                 lateststr = 'latest0' ; # Not latest
         except Exception,err:
             # Case HadGEM2-AO attempt to recover
-            if 'HadGEM2-AO' in model:
+            if 'HadGEM2-AO' in model and experiment in ['historical','rcp26','rcp45','rcp60','rcp85']:
                 variable    = path_bits[pathIndex+8]
                 if variable in atm_vars:
                     tableId = 'Amon'
@@ -509,7 +510,7 @@ def pathToFile(inpath,start_time,queue1):
                     tableId = 'OImon'
                 version     = datetime.datetime.fromtimestamp(fileinfo.st_ctime).strftime('%Y%m%d')
             # Case BESM-OA2-3 skip
-            if 'BESM-OA2-3' in model and 'decadal' in experiment:
+            elif 'BESM-OA2-3' in model and 'decadal' in experiment:
                 continue                
             else:
                 print 'pathToFile - Exception:',err,path
