@@ -1,8 +1,9 @@
-# Build and Release Folders
+# Build test and Release Folders
 bin/
 bin-debug/
 bin-release/
 _obsolete/
+test/
 
 # Other files and folders
 .settings/

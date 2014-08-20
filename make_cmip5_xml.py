@@ -268,8 +268,30 @@ PJD  8 Aug 2014     - Added HadGEM2-AO attempt to recover data and BESM-OA2-3 de
                     Fix BEMS-OA2-3 path problems - missing realm DRS component
                     pathToFile - Exception: list index out of range ->
                     /cmip5_css02/scratch/cmip5/output1/INPE/BESM-OA2-3/decadal1990/day/seaIce/sic/r8i1p1
-                    
+PJD 20 Aug 2014     - Added mkDirNoOSErr function to get around crashes with duplicate os.mkdir calls
+PJD 20 Aug 2014     - Updated pathToFile function for more intelligent searching - exclusion of experiments, time frequencies and
+                    data found in bad[0-9] subdirectories (Jeff's code creates these subdirs on failed download - using md5 check)
+PJD 20 Aug 2014     - Updated to use scandir function in place of os.walk - requires installation on machines (not part of python std lib)
+                    FUNCTION: os.walk
+                    000000.10 : gdo2_scratch  scan complete.. 0      paths total; 0      output files to be written (92  vars sampled)
+                    000003.80 : gdo2_data     scan complete.. 1754   paths total; 788    output files to be written (92  vars sampled)
+                    000466.96 : css01_scratch scan complete.. 112587 paths total; 47017  output files to be written (92  vars sampled)
+                    000002.01 : css01_data    scan complete.. 834    paths total; 708    output files to be written (92  vars sampled)
+                    001100.51 : css02_scratch scan complete.. 132615 paths total; 59778  output files to be written (92  vars sampled)
+                    000831.71 : css02_data    scan complete.. 69899  paths total; 32098  output files to be written (92  vars sampled)
+                    000039.72 : css02_cmip5   scan complete.. 8770   paths total; 3950   output files to be written (92  vars sampled)
+                    FUNCTION: scandir.walk
+                    000000.10 : gdo2_scratch  scan complete.. 0      paths total; 0      output files to be written (92  vars sampled)
+                    000004.96 : gdo2_data     scan complete.. 1754   paths total; 788    output files to be written (92  vars sampled)
+                    000243.02 : css01_scratch scan complete.. 112587 paths total; 47017  output files to be written (92  vars sampled)
+                    000002.00 : css01_data    scan complete.. 834    paths total; 708    output files to be written (92  vars sampled)
+                    000789.48 : css02_scratch scan complete.. 132615 paths total; 59778  output files to be written (92  vars sampled)
+                    000439.27 : css02_data    scan complete.. 69899  paths total; 32098  output files to be written (92  vars sampled)
+                    000032.41 : css02_cmip5   scan complete.. 8770   paths total; 3950   output files to be written (92  vars sampled)
+PJD 20 Aug 2014     - Reordered file so that function declaration is blocked up top
+
                     - TODO:
+                    Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     Add model masternodes
@@ -299,7 +321,8 @@ PJD  8 Aug 2014     - Added HadGEM2-AO attempt to recover data and BESM-OA2-3 de
 @author: durack1
 """
 
-import argparse,datetime,errno,gc,glob,os,pickle,shlex,subprocess,sys,time
+import argparse,datetime,errno,gc,glob,os,pickle,re,shlex,subprocess,sys,time
+import scandir ; # Installed locally on oceanonly and crunchy
 #import cdms2 as cdm
 from durolib import writeToLog
 from multiprocessing import Process,Manager
@@ -312,75 +335,11 @@ if 'e' in locals():
     del(e,pi,sctypeNA,typeNA)
     gc.collect()
 
-##### Set batch mode processing, console printing on/off and multiprocess loading #####
-batch       = True ; # True = on, False = off
-batch_print = False ; # Write log messages to console - suppress from cron daemon ; True = on, False = off
-threadCount = 40 ; # ~36hrs xml creation solo ; 50hrs xml creation crunchy & oceanonly in parallel
-##### Set batch mode processing, console printing on/off and multiprocess loading #####
-
-# Set time counter and grab timestamp
-start_time = time.time() ; # Set time counter
-time_now = datetime.datetime.now()
-time_format = time_now.strftime('%y%m%d_%H%M%S')
-
-# Set conditional whether files are created or just numbers are calculated
-if batch:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('makefiles',metavar='str',type=str,help='\'makefiles\' as a command line argument will write xml files, \'report\' will produce a logfile with path information')
-    args = parser.parse_args()
-    if (args.makefiles == 'makefiles'):
-       make_xml = 1 ; # 1 = make files
-       print time_format
-       print "** Write mode - new *.xml files will be written **"
-    elif (args.makefiles == 'report'):
-       make_xml = 0 ; # 0 = don't make files, just report
-       print time_format
-       print "** Report mode - no *.xml files will be written **"
-else:
-    make_xml = 1
-    print time_format
-    print "** Non-batch mode - new *.xml files will be written **"
-
-# Set directories
-host_name = gethostname()
-if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
-    trim_host = replace(host_name,'.llnl.gov','')
-    if batch:
-        host_path = '/work/cmip5/' ; # BATCH MODE - oceanonly 130605
-        log_path = os.path.join(host_path,'_logs')
-    else:
-        host_path = '/work/durack1/Shared/cmip5/tmp/' ; # WORK_MODE_TEST - oceanonly 130605 #TEST#
-        log_path = host_path
-    cdat_path = '/usr/local/uvcdat/latest/bin/'
-else:
-    print '** HOST UNKNOWN, aborting.. **'
-    sys.exit()
-
-# Change directory to host
-os.chdir(host_path)
-
-# Set logfile attributes
-time_now = datetime.datetime.now()
-time_format = time_now.strftime("%y%m%d_%H%M%S")
-pypid = str(os.getpid()) ; # Returns calling python instance, so master also see os.getppid() - Parent
-logfile = os.path.join(log_path,"".join([time_format,'_make_cmip5_xml-',trim_host,'-threads',str(threadCount),'-PID',pypid,'.log']))
-# Logging the explicit data path that is being searched
-os.chdir('/cmip5_gdo2')
-cmd = 'df -h | grep cmip5'
-p = Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE)
-out,err = p.communicate()
-writeToLog(logfile,"".join(['TIME: ',time_format]))
-writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
-writeToLog(logfile,"".join(['SOURCEFILES:\n',out]))
-del(trim_host,time_now,time_format,cmd,p,out,err)
-gc.collect()
-
-
 # Define functions
-def mkdirs(newdir,mode=0777):
-    #http://my.safaribooksonline.com/book/programming/python/0596001673/files/pythoncook-chp-4-sect18
-    try: os.makedirs(newdir,mode)
-    except OSError,err:
+def mkDirNoOSErr(newdir,mode=0777):
+    try:
+        os.makedirs(newdir,mode)
+    except OSError as err:
         #Re-raise the error unless it's about an already existing directory
         if err.errno != errno.EEXIST or not os.path.isdir(newdir):
             raise
@@ -388,29 +347,55 @@ def mkdirs(newdir,mode=0777):
 
 def sysCallTimeout(cmd,timeout):
     start = time.time()
-    p = Popen(cmd)
+    p = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     while time.time() - start < timeout:
         if p.poll() is not None:
             return
         time.sleep(0.1)
     p.kill()
-    raise OSError('System call timed out')
+    raise OSError('sysCallTimeout: System call timed out')
 
 
-# Debug code for duplicate removal/checking
-#import os,pickle
-#picklefile = '/work/cmip5/_logs/140808_155431_list_outfiles.pickle'
-#f = open(picklefile,'r')
-#outfiles,outfiles_new,outfiles_paths,outfiles_paths_new = pickle.load(f)
-#f.close()
 def pathToFile(inpath,start_time,queue1):
-#def pathToFile(inpath,start_time): ; # Non-parallel version of code for testing
+#def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
-    exclude_dir = '-will-delete' ; # Must be string in current syntax  
-    for (path,dirs,files) in os.walk(inpath,'false'):
-        if exclude_dir in path:
+    #for (path,dirs,files) in os.walk(inpath,topdown=True):
+    for (path,dirs,files) in scandir.walk(inpath,topdown=True):
+        
+        ## IGNORE EXPERIMENTS - AT SEARCH LEVEL - SPEED UP SEARCH ##
+        expExclude = set(['amip4K','amip4xCO2','aqua4K','aqua4xCO2','aquaControl','esmControl','esmFdbk1','esmFixClim1',
+                          'esmFixClim2','esmHistorical','esmrcp85','Igm','midHolocene','sst2030','sst2090','sst2090rcp45',
+                          'sstClim','sstClim4xCO2','sstClimAerosol','sstClimSulfate','volcIn2010'])
+        timeExclude = set(['3hr','6hr','day','monClim','yr'])
+        reDec = re.compile(r'decadal[0-9]{4}')
+        reVol = re.compile(r'noVolc[0-9]{4}')
+        dirs[:] = [d for d in dirs if d not in expExclude]
+        dirs[:] = [d for d in dirs if d not in timeExclude and not re.search(reDec,d) and not re.search(reVol,d)]
+        ## IGNORE EXPERIMENTS ##
+        
+        # Test files don't exist and we're not at the end of the directory tree
+        if files == [] and dirs != []:
+            continue ; #print 'files&dirs',path
+
+        ## BAD DIRECTORIES - TRUNCATE INVALID MD5 DATA ##
+        if re.search(r'bad[0-9]',path):
+            continue ; #print 're.search',path
+        if '-will-delete' in path:
+            print '-will-delete',path
             continue
-        elif files != [] and dirs == []:
+        # Iterate and purge bad[0-9] subdirs
+        for dirCount,el in reversed(list(enumerate(dirs))):
+            if re.match(r'bad[0-9]',el):
+                del dirs[dirCount]
+        
+        #130225 1342: Pathologies to consider checking for bad data
+        #badpaths = ['/bad','-old/','/output/','/ICHEC-old1/']
+        #bad = GISS-E2-R, EC-EARTH ; -old = CSIRO-QCCCE-old ; /output/ = CSIRO-Mk3-6-0 ; /ICHEC-old1/ = EC-EARTH
+        #paths rather than files = CNRM-CM5, FGOALS-g2, bcc-csm1-1
+        #duplicates exist between /cmip5_gdo2/scratch and /cmip5_css02/scratch = CCSM4, CSIRO-Mk3-6-0        
+        ## BAD DIRECTORIES ##
+
+        if files != [] and dirs == []:
             # Append to list variable
             data_paths += [path]
             i1 = i1 + 1 ; # Increment counter
@@ -472,32 +457,25 @@ def pathToFile(inpath,start_time,queue1):
                 variable    = path_bits[pathIndex+10] ; #12
             # Getting versioning/latest info
             testfile = os.listdir(path)[0]
-            #print "".join(['file found: ',testfile])            
             # Test for zero-size file before trying to open
-            #print os.path.join(path,testfile)
             fileinfo = os.stat(os.path.join(path,testfile))
             checksize = fileinfo.st_size
             if checksize == 0:
-                #print "".join(['Zero-sized file: ',path])
-                continue
+                continue ; #print "".join(['Zero-sized file: ',path])
             # Read access check
             if os.access(os.path.join(path,testfile),os.R_OK) != True:
-                #print "".join(['No read permissions: ',path])
-                continue
+                continue ; #print "".join(['No read permissions: ',path])
             # Netcdf metadata scour
             #f_h = cdm.open(os.path.join(path,testfile))
-            #tracking_id     = f_h.tracking_id
-            #creation_date   = f_h.creation_date
-            tracking_id     = ''
-            creation_date   = ''
+            tracking_id     = '' ; #tracking_id     = f_h.tracking_id
+            creation_date   = '' ; #creation_date   = f_h.creation_date
             #f_h.close()
             if test_latest(tracking_id,creation_date):
-                lateststr = 'latestX' ; # Placeholder                
-                #lateststr = 'latest1' ; # Latest
+                lateststr = 'latestX' ; #lateststr = 'latest1' ; # Latest
             else:
                 lateststr = 'latest0' ; # Not latest
         except Exception,err:
-            # Case HadGEM2-AO attempt to recover
+            # Case HadGEM2-AO - attempt to recover data
             if 'HadGEM2-AO' in model and experiment in ['historical','rcp26','rcp45','rcp60','rcp85']:
                 variable    = path_bits[pathIndex+8]
                 if variable in atm_vars:
@@ -509,7 +487,7 @@ def pathToFile(inpath,start_time,queue1):
                 elif variable in seaIce_vars:
                     tableId = 'OImon'
                 version     = datetime.datetime.fromtimestamp(fileinfo.st_ctime).strftime('%Y%m%d')
-            # Case BESM-OA2-3 skip
+            # Case BESM-OA2-3 - skip as only decadal data
             elif 'BESM-OA2-3' in model and 'decadal' in experiment:
                 continue                
             else:
@@ -561,13 +539,12 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
         out_path = os.path.join(experiment,realm,temporal,variable)
     
     outfileName = os.path.join(host_path,out_path,"".join(outfile))
-    # Fix mon -> mo
-    outfileName = replace(outfileName,'.mon.','.mo.') ; # Replaces mon in filename
+    outfileName = replace(outfileName,'.mon.','.mo.') ; # Fix mon -> mo
     if not os.path.exists(os.path.join(host_path,out_path)):
         # At first run create output directories
         try:
-            os.makedirs(os.path.join(host_path,out_path))
-            #mkdirs(os.path.join(host_path,out_path)) ; # Alternative call to not crash if directory exists
+            #os.makedirs(os.path.join(host_path,out_path))
+            mkDirNoOSErr(os.path.join(host_path,out_path)) ; # Alternative call - don't crash if directory exists
         except Exception,err:
             print 'xmlWrite - Exception:',err
             print "".join(['** Crash while trying to create a new directory: ',os.path.join(host_path,out_path)])                
@@ -778,6 +755,73 @@ def test_latest(tracking_id,creation_date):
     return latestbool
 
 
+
+
+
+
+##### Set batch mode processing, console printing on/off and multiprocess loading #####
+batch       = True ; # True = on, False = off
+batch_print = False ; # Write log messages to console - suppress from cron daemon ; True = on, False = off
+threadCount = 40 ; # ~36hrs xml creation solo ; 50hrs xml creation crunchy & oceanonly in parallel
+##### Set batch mode processing, console printing on/off and multiprocess loading #####
+
+# Set time counter and grab timestamp
+start_time  = time.time() ; # Set time counter
+time_format = datetime.datetime.now().strftime('%y%m%d_%H%M%S')
+
+# Set conditional whether files are created or just numbers are calculated
+if batch:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('makefiles',metavar='str',type=str,help='\'makefiles\' as a command line argument will write xml files, \'report\' will produce a logfile with path information')
+    args = parser.parse_args()
+    if (args.makefiles == 'makefiles'):
+       make_xml = 1 ; # 1 = make files
+       print time_format
+       print "** Write mode - new *.xml files will be written **"
+    elif (args.makefiles == 'report'):
+       make_xml = 0 ; # 0 = don't make files, just report
+       print time_format
+       print "** Report mode - no *.xml files will be written **"
+else:
+    make_xml = 1
+    print time_format
+    print "** Non-batch mode - new *.xml files will be written **"
+
+# Set directories
+host_name = gethostname()
+if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
+    trim_host = replace(host_name,'.llnl.gov','')
+    if batch:
+        host_path = '/work/cmip5/' ; # BATCH MODE - oceanonly 130605
+        log_path = os.path.join(host_path,'_logs')
+    else:
+        host_path = '/work/durack1/Shared/cmip5/tmp/' ; # WORK_MODE_TEST - oceanonly 130605 #TEST#
+        log_path = host_path
+    cdat_path = '/usr/local/uvcdat/latest/bin/'
+else:
+    print '** HOST UNKNOWN, aborting.. **'
+    sys.exit()
+
+# Change directory to host
+os.chdir(host_path)
+
+# Set logfile attributes
+time_format = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+pypid = str(os.getpid()) ; # Returns calling python instance, so master also see os.getppid() - Parent
+logfile = os.path.join(log_path,"".join([time_format,'_make_cmip5_xml-',trim_host,'-threads',str(threadCount),'-PID',pypid,'.log']))
+# Logging the explicit searched data path
+os.chdir('/cmip5_css02')
+cmd = 'df -h | grep cmip5'
+sysCallTimeout(cmd,5) ; # Test for network connectivity and fail if /cmip5_css02 not alive
+p = Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE)
+out,err = p.communicate()
+writeToLog(logfile,"".join(['TIME: ',time_format]))
+writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
+writeToLog(logfile,"".join(['FUNCTION: ','scandir.walk']))
+writeToLog(logfile,"".join(['SOURCEFILES:\n',out]))
+del(trim_host,time_format,cmd,p,out,err)
+gc.collect()
+
 # Generate queue objects
 manager0 = Manager()
 ## GDO2 data sources - Mine for paths and files
@@ -896,11 +940,6 @@ gc.collect()
 outfiles,outfiles_paths = zip(*outfilesAndPaths)
 
 # Truncate duplicates from lists
-#130225 1342: Pathologies to consider check for bad data
-#badpaths = ['/bad','-old/','/output/','/ICHEC-old1/']
-#bad = GISS-E2-R, EC-EARTH ; -old = CSIRO-QCCCE-old ; /output/ = CSIRO-Mk3-6-0 ; /ICHEC-old1/ = EC-EARTH
-#paths rather than files = CNRM-CM5, FGOALS-g2, bcc-csm1-1
-#duplicates exist between /cmip5_gdo2/scratch and /cmip5_css02/scratch = CCSM4, CSIRO-Mk3-6-0
 outfiles_new = []; outfiles_paths_new = []; counter = 0
 for count,testfile in enumerate(outfiles):
     if count < len(outfiles)-1:
@@ -941,10 +980,6 @@ f = open(picklefile,'r')
 outfiles,outfiles_new,outfiles_paths,outfiles_paths_new = pickle.load(f)
 f.close()
 
-130225 1342: Check for bad data
-badpaths = ['/bad','-old/','/output/','/ICHEC-old1/']
-bad = GISS-E2-R, EC-EARTH ; -old = CSIRO-QCCCE-old ; /output/ = CSIRO-Mk3-6-0 ; /ICHEC-old1/ = EC-EARTH
-paths rather than files = CNRM-CM5, FGOALS-g2, bcc-csm1-1
 for count,path in enumerate(outfiles_paths_new):
     if any( (bad in path) for bad in badstuff):
         print count,path
