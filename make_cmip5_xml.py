@@ -289,6 +289,7 @@ PJD 20 Aug 2014     - Updated to use scandir function in place of os.walk - requ
                     000439.27 : css02_data    scan complete.. 69899  paths total; 32098  output files to be written (92  vars sampled)
                     000032.41 : css02_cmip5   scan complete.. 8770   paths total; 3950   output files to be written (92  vars sampled)
 PJD 20 Aug 2014     - Reordered file so that function declaration is blocked up top
+PJD 20 Aug 2014     - Moved mkDirNoOSErr and sysCallTimeout to durolib
 
                     - TODO:
                     Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
@@ -324,7 +325,7 @@ PJD 20 Aug 2014     - Reordered file so that function declaration is blocked up 
 import argparse,datetime,errno,gc,glob,os,pickle,re,shlex,subprocess,sys,time
 import scandir ; # Installed locally on oceanonly and crunchy
 #import cdms2 as cdm
-from durolib import writeToLog
+from durolib import mkDirNoOSErr,sysCallTimeout,writeToLog
 from multiprocessing import Process,Manager
 from socket import gethostname
 from string import replace
@@ -336,26 +337,6 @@ if 'e' in locals():
     gc.collect()
 
 # Define functions
-def mkDirNoOSErr(newdir,mode=0777):
-    try:
-        os.makedirs(newdir,mode)
-    except OSError as err:
-        #Re-raise the error unless it's about an already existing directory
-        if err.errno != errno.EEXIST or not os.path.isdir(newdir):
-            raise
-
-
-def sysCallTimeout(cmd,timeout):
-    start = time.time()
-    p = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    while time.time() - start < timeout:
-        if p.poll() is not None:
-            return
-        time.sleep(0.1)
-    p.kill()
-    raise OSError('sysCallTimeout: System call timed out')
-
-
 def pathToFile(inpath,start_time,queue1):
 #def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
