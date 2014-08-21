@@ -290,6 +290,8 @@ PJD 20 Aug 2014     - Updated to use scandir function in place of os.walk - requ
                     000032.41 : css02_cmip5   scan complete.. 8770   paths total; 3950   output files to be written (92  vars sampled)
 PJD 20 Aug 2014     - Reordered file so that function declaration is blocked up top
 PJD 20 Aug 2014     - Moved mkDirNoOSErr and sysCallTimeout to durolib
+PJD 21 Aug 2014     - Cleaned up module imports   
+PJD 21 Aug 2014     - Confirmed directory walking - exclusion code is working correctly
 
                     - TODO:
                     Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
@@ -322,14 +324,14 @@ PJD 20 Aug 2014     - Moved mkDirNoOSErr and sysCallTimeout to durolib
 @author: durack1
 """
 
-import argparse,datetime,errno,gc,glob,os,pickle,re,shlex,subprocess,sys,time
+import argparse,datetime,gc,glob,os,pickle,re,shlex,sys,time
 import scandir ; # Installed locally on oceanonly and crunchy
 #import cdms2 as cdm
 from durolib import mkDirNoOSErr,sysCallTimeout,writeToLog
 from multiprocessing import Process,Manager
 from socket import gethostname
 from string import replace
-from subprocess import Popen,PIPE
+from subprocess import call,Popen,PIPE
 
 # Cleanup interactive/spyder sessions
 if 'e' in locals():
@@ -814,7 +816,7 @@ p1.start() ; print "".join(['p1 pid: ',str(p1.ident)])
 queue2 = manager0.Queue(maxsize=0)
 p2 = Process(target=pathToFile,args=('/cmip5_gdo2/scratch/cmip5/',start_time,queue2))
 p2.start() ; print "".join(['p2 pid: ',str(p2.ident)])
-## CSS02 data sources - Mine for paths and files
+## CSS data sources - Mine for paths and files
 # css02_data
 queue3 = manager0.Queue(maxsize=0)
 p3 = Process(target=pathToFile,args=('/cmip5_css02/data/cmip5/',start_time,queue3))
@@ -996,11 +998,11 @@ if make_xml:
     # Catch errors with system commands
     cmd = "".join(['rm -rf ',host_path,'*/*/mo_new'])
     fnull = open(os.devnull,'w')
-    p = subprocess.call(cmd,stdout=fnull,shell=True)
+    p = call(cmd,stdout=fnull,shell=True)
     fnull.close()    
     cmd = "".join(['rm -rf ',host_path,'*/fx_new'])
     fnull = open(os.devnull,'w')
-    p = subprocess.call(cmd,stdout=fnull,shell=True)
+    p = call(cmd,stdout=fnull,shell=True)
     fnull.close() 
     print "** Generating new *.xml files **"
     writeToLog(logfile,"** Generating new *.xml files **")
@@ -1110,36 +1112,36 @@ if make_xml:
         args = shlex.split(cmd) ; # Create input argument of type list - shell=False requires this, shell=True tokenises (lists) and runs this
         fnull = open(os.devnull,'w')
         #fnull = open("".join([time_format,'_7za.log']),'w') ; # Debug binary being called from script
-        p = subprocess.call(args,stdout=fnull,shell=False) ; # call runs in the foreground, so script will wait for termination
+        p = call(args,stdout=fnull,shell=False) ; # call runs in the foreground, so script will wait for termination
         fnull.close()
         # Purge old files [durack1@crunchy cmip5]$ rm -rf */*/mo
         cmd = 'rm -rf */*/mo'
         fnull = open(os.devnull,'w')
-        p = subprocess.call(cmd,stdout=fnull,shell=True)
+        p = call(cmd,stdout=fnull,shell=True)
         fnull.close()
         fnull = open(os.devnull,'w')
         cmd = 'rm -rf fx/fx'
-        p = subprocess.call(cmd,stdout=fnull,shell=True)
+        p = call(cmd,stdout=fnull,shell=True)
         cmd = 'rm -rf */fx' ; # Purge existing subdirs beneath $EXPERIMENT/fx
-        p = subprocess.call(cmd,stdout=fnull,shell=True)
+        p = call(cmd,stdout=fnull,shell=True)
         fnull.close()    
         # Move new files into place
         cmd = 'find */*/mo_new -maxdepth 0 -exec sh -c \'mv -f `echo {}` `echo {} | sed s/mo_new/mo/`\' \;'
         fnull = open(os.devnull,'w')
-        p = subprocess.call(cmd,stdout=fnull,shell=True)
+        p = call(cmd,stdout=fnull,shell=True)
         fnull.close()
         cmd = 'find fx/fx_new -maxdepth 0 -exec sh -c \'mv -f `echo {}` `echo {} | sed s/fx_new/fx/`\' \;'
         fnull = open(os.devnull,'w')
-        p = subprocess.call(cmd,stdout=fnull,shell=True)
+        p = call(cmd,stdout=fnull,shell=True)
         fnull.close()
         # Wash new directories with fresh permissions
         cmd = 'chmod 755 -R */*/mo' ; # Pete G needs x to list directories
         fnull = open(os.devnull,'w')
-        p = subprocess.call(cmd,stdout=fnull,shell=True)
+        p = call(cmd,stdout=fnull,shell=True)
         fnull.close()        
         cmd = 'chmod 755 -R */fx'
         fnull = open(os.devnull,'w')
-        p = subprocess.call(cmd,stdout=fnull,shell=True)
+        p = call(cmd,stdout=fnull,shell=True)
         fnull.close() 
         del(time_now,cmd,fnull,p)
         gc.collect()
