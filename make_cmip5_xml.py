@@ -50,6 +50,7 @@ PJD 20 Aug 2014     - Moved mkDirNoOSErr and sysCallTimeout to durolib
 PJD 21 Aug 2014     - Cleaned up module imports   
 PJD 21 Aug 2014     - Confirmed directory walking - exclusion code is working correctly
 PJD 15 Sep 2014     - PJD 23 Jan 2012 to 18 Nov 2013: Comments purged, look in _obsolete directory for 140915a_* file
+PJD 15 Sep 2014     - Updated HadGEM2-AO data recovery to use realm rather than vars to assign tableId ('pr' duplicated across tables)
 
                     - TODO:
                     Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
@@ -219,13 +220,13 @@ def pathToFile(inpath,start_time,queue1):
             # Case HadGEM2-AO - attempt to recover data
             if 'HadGEM2-AO' in model and experiment in ['historical','rcp26','rcp45','rcp60','rcp85']:
                 variable    = path_bits[pathIndex+8]
-                if variable in atm_vars:
+                if realm in 'atm':
                     tableId = 'Amon'
-                elif variable in ocn_vars:
+                elif realm in 'ocn':
                     tableId = 'Omon'
-                elif variable in land_vars:
+                elif realm in 'land':
                     tableId = 'Lmon'
-                elif variable in seaIce_vars:
+                elif realm in 'seaIce':
                     tableId = 'OImon'
                 version     = datetime.datetime.fromtimestamp(fileinfo.st_ctime).strftime('%Y%m%d')
             # Case BESM-OA2-3 - skip as only decadal data
