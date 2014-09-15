@@ -51,6 +51,7 @@ PJD 21 Aug 2014     - Cleaned up module imports
 PJD 21 Aug 2014     - Confirmed directory walking - exclusion code is working correctly
 PJD 15 Sep 2014     - PJD 23 Jan 2012 to 18 Nov 2013: Comments purged, look in _obsolete directory for 140915a_* file
 PJD 15 Sep 2014     - Updated HadGEM2-AO data recovery to use realm rather than vars to assign tableId ('pr' duplicated across tables)
+PJD 15 Sep 2014     - Updated ocn_vars to include boundary fluxes
 
                     - TODO:
                     Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
@@ -153,9 +154,9 @@ def pathToFile(inpath,start_time,queue1):
     atmOrocn    = ['atm','ocn'] ; atmOrocn.sort()
     fx_vars     = ['areacella','areacello','basin','deptho','orog','sftlf','sftof','volcello'] ; fx_vars.sort()
     land_vars   = ['mrro','mrros','tsl'] ; land_vars.sort()
-    ocn_vars    = ['agessc','cfc11','evs','ficeberg','friver','mfo','mlotst','omlmax','rhopoto','sfriver',
-                   'so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr','vsfevap','vsfpr',
-                   'vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
+    ocn_vars    = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
+                   'rhopoto','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
+                   'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
     seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
     len_vars    = len(atm_vars)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
     
