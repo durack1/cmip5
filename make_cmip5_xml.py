@@ -99,6 +99,15 @@ if 'e' in locals():
     gc.collect()
 
 # Define functions
+
+def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
+    outfile_count = len(data_outfiles)
+    time_since_start_s = '%09.2f' % time_since_start
+    print "".join([path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',str(outfile_count).ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)'])
+    writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)']))
+    return
+
+
 def pathToFile(inpath,start_time,queue1):
 #def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
@@ -250,12 +259,150 @@ def pathToFile(inpath,start_time,queue1):
     return
 
 
-def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
-    outfile_count = len(data_outfiles)
+
+
+def test_latest(tracking_id,creation_date):
+    # There is a need to map models (rather than institutes) to index nodes as NSF-DOE-NCAR has multiple index nodes according to Karl T    
+    # User cmip5_controlled_vocab.txt file: http://esg-pcmdi.llnl.gov/internal/esg-data-node-documentation/cmip5_controlled_vocab.txt
+    # This maps institute_id => (data_node, index_node)
+    # where data_node is the originator of the data, and index_node is where they publish to.
+    instituteDnodeMap = {
+        'BCC':('bcccsm.cma.gov.cn', 'pcmdi9.llnl.gov'),
+        'BNU':('esg.bnu.edu.cn', 'pcmdi9.llnl.gov'),
+        'CCCMA':('dapp2p.cccma.ec.gc.ca', 'pcmdi9.llnl.gov'),
+        'CCCma':('dapp2p.cccma.ec.gc.ca', 'pcmdi9.llnl.gov'),
+        'CMCC':('adm07.cmcc.it', 'adm07.cmcc.it'),
+        'CNRM-CERFACS':('esg.cnrm-game-meteo.fr', 'esgf-node.ipsl.fr'),
+        'COLA-CFS':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
+        'CSIRO-BOM':('esgnode2.nci.org.au', 'esg2.nci.org.au'),
+        'CSIRO-QCCCE':('esgnode2.nci.org.au', 'esg2.nci.org.au'),
+        'FIO':('cmip5.fio.org.cn', 'pcmdi9.llnl.gov'),
+        'ICHEC':('esg2.e-inis.ie', 'esgf-index1.ceda.ac.uk'),
+        'INM':('pcmdi9.llnl.gov', 'pcmdi9.llnl.gov'),
+        'IPSL':('vesg.ipsl.fr', 'esgf-node.ipsl.fr'),
+        'LASG-CESS':('esg.lasg.ac.cn', 'pcmdi9.llnl.gov'),
+        'LASG-IAP':('esg.lasg.ac.cn', 'pcmdi9.llnl.gov'),
+        'LASF-CESS':('esg.lasg.ac.cn', 'pcmdi9.llnl.gov'),
+        'MIROC':('dias-esg-nd.tkl.iis.u-tokyo.ac.jp', 'pcmdi9.llnl.gov'),
+        'MOHC':('cmip-dn1.badc.rl.ac.uk', 'esgf-index1.ceda.ac.uk'),
+        'MPI-M':('bmbf-ipcc-ar5.dkrz.de', 'esgf-data.dkrz.de'),
+        'MRI':('dias-esg-nd.tkl.iis.u-tokyo.ac.jp', 'pcmdi9.llnl.gov'),
+        'NASA GISS':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
+        'NASA-GISS':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
+        'NASA GMAO':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
+        'NCAR':('tds.ucar.edu', 'esg-datanode.jpl.nasa.gov'),
+        'NCC':('norstore-trd-bio1.hpc.ntnu.no', 'pcmdi9.llnl.gov'),
+        'NICAM':('dias-esg-nd.tkl.iis.u-tokyo.ac.jp', 'pcmdi9.llnl.gov'),
+        'NIMR-KMA':('pcmdi9.llnl.gov', 'pcmdi9.llnl.gov'),
+        'NOAA GFDL':('esgdata.gfdl.noaa.gov', 'pcmdi9.llnl.gov'),
+        'NOAA-GFDL':('esgdata.gfdl.noaa.gov', 'pcmdi9.llnl.gov'),
+        'NSF-DOE-NCAR':('tds.ucar.edu', 'esg-datanode.jpl.nasa.gov'),
+    }
+    masterDnodes = {
+        'adm07.cmcc.it',
+        'esg-datanode.jpl.nasa.gov',
+        'esg2.nci.org.au',
+        'esgf-data.dkrz.de',
+        'esgf-index1.ceda.ac.uk',
+        'esgf-node.ipsl.fr',
+        'esgf.nccs.nasa.gov',
+        'pcmdi9.llnl.gov',
+    }
+    modelInstituteMap = {
+        'access1-0','CSIRO-BOM',
+        'access1-3','CSIRO-BOM',
+        'bcc-csm1-1','BCC',
+        'noresm-l','NCC',
+    }
+    #cmd = ''.join(['/work/durack1/Shared/cmip5/esgquery_index.py --type f -t tracking_id:',tracking_id,' -q latest=true --fields latest'])
+    # try esgquery_index --type f -t tracking_id='tracking_id',latest=true,index_node='index_node' ; # Uncertain if index_node is available
+    #tmp = os.popen(cmd).readlines()
+    #time.sleep(1) ; # Pause
+    #latestbool = False
+    #for t in tmp:
+    #    if find(t,'latest'):
+    #        latestbool = True
+    latestbool = True
+    
+    return latestbool
+
+
+def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCode,inpath,outfileName,time_since_start,i,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood):
     time_since_start_s = '%09.2f' % time_since_start
-    print "".join([path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',str(outfile_count).ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)'])
-    writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)']))
-    return
+    logtime_now = datetime.datetime.now()
+    logtime_format = logtime_now.strftime("%y%m%d_%H%M%S")
+    if fileZero:
+        # Case cdscan writes no file
+        if '/data/cmip5/' in inpath:
+            err_text = ' DATA PROBLEM 1 (cdscan error - zero infile size) indexing '
+        else:
+            err_text = ' PROBLEM 1 (cdscan error - zero infile size) indexing '
+        writeToLog(logFile,"".join(['** ',format(xmlBad1,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
+        if batch_print:
+            print "".join(['**',err_text,inpath,' **'])
+        xmlBad1 = xmlBad1 + 1;
+        # Purge problem files
+        if os.path.isfile(outfileName):
+            os.remove(outfileName)
+    elif fileWarning:
+        # Case cdscan reports an error
+        if '/data/cmip5/' in inpath:
+            err_text = "".join([' DATA PROBLEM 2 (cdscan error- \'',errorCode,'\') indexing '])
+        else:
+            err_text = "".join([' PROBLEM 2 (cdscan error - \'',errorCode,'\') indexing '])
+        writeToLog(logFile,"".join(['** ',format(xmlBad2,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
+        if batch_print:
+            print "".join(['**',err_text,inpath,' **'])
+        xmlBad2 = xmlBad2 + 1;
+        # Purge problem files
+        if os.path.isfile(outfileName):
+            os.remove(outfileName)
+    elif fileNoRead:
+        # Case cdscan reports no error, however file wasn't readable
+        if '/data/cmip5/' in inpath:
+            err_text = ' DATA PROBLEM 3 (read perms) indexing '
+        else:
+            err_text = ' PROBLEM 3 (read perms) indexing '
+        writeToLog(logFile,"".join(['** ',format(xmlBad3,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
+        if batch_print:
+            print "".join(['**',err_text,inpath,' **'])
+        xmlBad3 = xmlBad3 + 1;
+        # Purge problem files
+        if os.path.isfile(outfileName):
+            os.remove(outfileName)
+    elif fileNoWrite:
+        # Case cdscan reports no error, however file wasn't written
+        if '/data/cmip5/' in inpath:
+            err_text = ' DATA PROBLEM 4 (no outfile) indexing '
+        else:
+            err_text = ' PROBLEM 4 (no outfile) indexing '
+        writeToLog(logFile,"".join(['** ',format(xmlBad4,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
+        if batch_print:
+            print "".join(['**',err_text,inpath,' **'])
+        xmlBad4 = xmlBad4 + 1;
+        # Purge problem files
+        if os.path.isfile(outfileName):
+            os.remove(outfileName)
+    elif fileNone:
+        # Case cdscan reports no error, however file wasn't written
+        if '/data/cmip5/' in inpath:
+            err_text = ' DATA PROBLEM 5 (no infiles) indexing '
+        else:
+            err_text = ' PROBLEM 5 (no infiles) indexing '
+        writeToLog(logFile,"".join(['** ',format(xmlBad5,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
+        if batch_print:
+            print "".join(['**',err_text,inpath,' **'])
+        xmlBad5 = xmlBad5 + 1;
+        # Purge problem files
+        if os.path.isfile(outfileName):
+            os.remove(outfileName)
+    else:
+        writeToLog(logFile,"".join(['** ',format(xmlGood,"07d"),' ',logtime_format,' ',time_since_start_s,'s success creating: ',outfileName,' **']))
+        xmlGood = xmlGood + 1;
+    
+    return[xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood] # ; Non-parallel version of code
+    #queue1.put_nowait([xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood]) ; # Queue
+    #return
 
 
 def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
@@ -352,153 +499,6 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     #return(inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start) ; Non-parallel version of code
     queue1.put_nowait([inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start]) ; # Queue
     return
-
-
-def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCode,inpath,outfileName,time_since_start,i,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood):
-    time_since_start_s = '%09.2f' % time_since_start
-    logtime_now = datetime.datetime.now()
-    logtime_format = logtime_now.strftime("%y%m%d_%H%M%S")
-    if fileZero:
-        # Case cdscan writes no file
-        if '/data/cmip5/' in inpath:
-            err_text = ' DATA PROBLEM 1 (cdscan error - zero infile size) indexing '
-        else:
-            err_text = ' PROBLEM 1 (cdscan error - zero infile size) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad1,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
-        if batch_print:
-            print "".join(['**',err_text,inpath,' **'])
-        xmlBad1 = xmlBad1 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
-    elif fileWarning:
-        # Case cdscan reports an error
-        if '/data/cmip5/' in inpath:
-            err_text = "".join([' DATA PROBLEM 2 (cdscan error- \'',errorCode,'\') indexing '])
-        else:
-            err_text = "".join([' PROBLEM 2 (cdscan error - \'',errorCode,'\') indexing '])
-        writeToLog(logFile,"".join(['** ',format(xmlBad2,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
-        if batch_print:
-            print "".join(['**',err_text,inpath,' **'])
-        xmlBad2 = xmlBad2 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
-    elif fileNoRead:
-        # Case cdscan reports no error, however file wasn't readable
-        if '/data/cmip5/' in inpath:
-            err_text = ' DATA PROBLEM 3 (read perms) indexing '
-        else:
-            err_text = ' PROBLEM 3 (read perms) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad3,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
-        if batch_print:
-            print "".join(['**',err_text,inpath,' **'])
-        xmlBad3 = xmlBad3 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
-    elif fileNoWrite:
-        # Case cdscan reports no error, however file wasn't written
-        if '/data/cmip5/' in inpath:
-            err_text = ' DATA PROBLEM 4 (no outfile) indexing '
-        else:
-            err_text = ' PROBLEM 4 (no outfile) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad4,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
-        if batch_print:
-            print "".join(['**',err_text,inpath,' **'])
-        xmlBad4 = xmlBad4 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
-    elif fileNone:
-        # Case cdscan reports no error, however file wasn't written
-        if '/data/cmip5/' in inpath:
-            err_text = ' DATA PROBLEM 5 (no infiles) indexing '
-        else:
-            err_text = ' PROBLEM 5 (no infiles) indexing '
-        writeToLog(logFile,"".join(['** ',format(xmlBad5,"07d"),' ',logtime_format,' ',time_since_start_s,'s',err_text,inpath,' **']))
-        if batch_print:
-            print "".join(['**',err_text,inpath,' **'])
-        xmlBad5 = xmlBad5 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
-    else:
-        writeToLog(logFile,"".join(['** ',format(xmlGood,"07d"),' ',logtime_format,' ',time_since_start_s,'s success creating: ',outfileName,' **']))
-        xmlGood = xmlGood + 1;
-    
-    return[xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood] # ; Non-parallel version of code
-    #queue1.put_nowait([xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood]) ; # Queue
-    #return
-
-
-def test_latest(tracking_id,creation_date):
-    # There is a need to map models (rather than institutes) to index nodes as NSF-DOE-NCAR has multiple index nodes according to Karl T    
-    # User cmip5_controlled_vocab.txt file: http://esg-pcmdi.llnl.gov/internal/esg-data-node-documentation/cmip5_controlled_vocab.txt
-    # This maps institute_id => (data_node, index_node)
-    # where data_node is the originator of the data, and index_node is where they publish to.
-    instituteDnodeMap = {
-        'BCC':('bcccsm.cma.gov.cn', 'pcmdi9.llnl.gov'),
-        'BNU':('esg.bnu.edu.cn', 'pcmdi9.llnl.gov'),
-        'CCCMA':('dapp2p.cccma.ec.gc.ca', 'pcmdi9.llnl.gov'),
-        'CCCma':('dapp2p.cccma.ec.gc.ca', 'pcmdi9.llnl.gov'),
-        'CMCC':('adm07.cmcc.it', 'adm07.cmcc.it'),
-        'CNRM-CERFACS':('esg.cnrm-game-meteo.fr', 'esgf-node.ipsl.fr'),
-        'COLA-CFS':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
-        'CSIRO-BOM':('esgnode2.nci.org.au', 'esg2.nci.org.au'),
-        'CSIRO-QCCCE':('esgnode2.nci.org.au', 'esg2.nci.org.au'),
-        'FIO':('cmip5.fio.org.cn', 'pcmdi9.llnl.gov'),
-        'ICHEC':('esg2.e-inis.ie', 'esgf-index1.ceda.ac.uk'),
-        'INM':('pcmdi9.llnl.gov', 'pcmdi9.llnl.gov'),
-        'IPSL':('vesg.ipsl.fr', 'esgf-node.ipsl.fr'),
-        'LASG-CESS':('esg.lasg.ac.cn', 'pcmdi9.llnl.gov'),
-        'LASG-IAP':('esg.lasg.ac.cn', 'pcmdi9.llnl.gov'),
-        'LASF-CESS':('esg.lasg.ac.cn', 'pcmdi9.llnl.gov'),
-        'MIROC':('dias-esg-nd.tkl.iis.u-tokyo.ac.jp', 'pcmdi9.llnl.gov'),
-        'MOHC':('cmip-dn1.badc.rl.ac.uk', 'esgf-index1.ceda.ac.uk'),
-        'MPI-M':('bmbf-ipcc-ar5.dkrz.de', 'esgf-data.dkrz.de'),
-        'MRI':('dias-esg-nd.tkl.iis.u-tokyo.ac.jp', 'pcmdi9.llnl.gov'),
-        'NASA GISS':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
-        'NASA-GISS':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
-        'NASA GMAO':('esgdata1.nccs.nasa.gov', 'esgf.nccs.nasa.gov'),
-        'NCAR':('tds.ucar.edu', 'esg-datanode.jpl.nasa.gov'),
-        'NCC':('norstore-trd-bio1.hpc.ntnu.no', 'pcmdi9.llnl.gov'),
-        'NICAM':('dias-esg-nd.tkl.iis.u-tokyo.ac.jp', 'pcmdi9.llnl.gov'),
-        'NIMR-KMA':('pcmdi9.llnl.gov', 'pcmdi9.llnl.gov'),
-        'NOAA GFDL':('esgdata.gfdl.noaa.gov', 'pcmdi9.llnl.gov'),
-        'NOAA-GFDL':('esgdata.gfdl.noaa.gov', 'pcmdi9.llnl.gov'),
-        'NSF-DOE-NCAR':('tds.ucar.edu', 'esg-datanode.jpl.nasa.gov'),
-    }
-    masterDnodes = {
-        'adm07.cmcc.it',
-        'esg-datanode.jpl.nasa.gov',
-        'esg2.nci.org.au',
-        'esgf-data.dkrz.de',
-        'esgf-index1.ceda.ac.uk',
-        'esgf-node.ipsl.fr',
-        'esgf.nccs.nasa.gov',
-        'pcmdi9.llnl.gov',
-    }
-    modelInstituteMap = {
-        'access1-0','CSIRO-BOM',
-        'access1-3','CSIRO-BOM',
-        'bcc-csm1-1','BCC',
-        'noresm-l','NCC',
-    }
-    #cmd = ''.join(['/work/durack1/Shared/cmip5/esgquery_index.py --type f -t tracking_id:',tracking_id,' -q latest=true --fields latest'])
-    # try esgquery_index --type f -t tracking_id='tracking_id',latest=true,index_node='index_node' ; # Uncertain if index_node is available
-    #tmp = os.popen(cmd).readlines()
-    #time.sleep(1) ; # Pause
-    #latestbool = False
-    #for t in tmp:
-    #    if find(t,'latest'):
-    #        latestbool = True
-    latestbool = True
-    
-    return latestbool
-
-
-
 
 
 
