@@ -52,6 +52,7 @@ PJD 21 Aug 2014     - Confirmed directory walking - exclusion code is working co
 PJD 15 Sep 2014     - PJD 23 Jan 2012 to 18 Nov 2013: Comments purged, look in _obsolete directory for 140915a_* file
 PJD 15 Sep 2014     - Updated HadGEM2-AO data recovery to use realm rather than vars to assign tableId ('pr' duplicated across tables)
 PJD 15 Sep 2014     - Updated ocn_vars to include boundary fluxes
+PJD 15 Sep 2014     - Added keepFile function and updated purge commands
 
                     - TODO:
                     Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
@@ -86,12 +87,12 @@ PJD 15 Sep 2014     - Updated ocn_vars to include boundary fluxes
 
 import argparse,datetime,gc,glob,os,pickle,re,shlex,sys,time
 import scandir ; # Installed locally on oceanonly and crunchy
-#import cdms2 as cdm
 from durolib import mkDirNoOSErr,sysCallTimeout,writeToLog
 from multiprocessing import Process,Manager
 from socket import gethostname
 from string import replace
 from subprocess import call,Popen,PIPE
+#import cdms2 as cdm
 
 # Cleanup interactive/spyder sessions
 if 'e' in locals():
@@ -99,6 +100,11 @@ if 'e' in locals():
     gc.collect()
 
 # Define functions
+def keepFile(outfileName,errStr):
+    outfileNameNew = replace(outfileName,'.latestX.xml',''.join(['.latestX.WARN',errStr,'.xml']))
+    if os.path.isfile(outfileName):
+        os.rename(outfileName,outfileNameNew)
+
 
 def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     outfile_count = len(data_outfiles)
@@ -341,9 +347,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad1 = xmlBad1 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
+        # Rename problem files
+        keepFile(outfileName,1)
     elif fileWarning:
         # Case cdscan reports an error
         if '/data/cmip5/' in inpath:
@@ -354,9 +359,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad2 = xmlBad2 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
+        # Rename problem files
+        keepFile(outfileName,2)
     elif fileNoRead:
         # Case cdscan reports no error, however file wasn't readable
         if '/data/cmip5/' in inpath:
@@ -367,9 +371,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad3 = xmlBad3 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
+        # Rename problem files
+        keepFile(outfileName,3)
     elif fileNoWrite:
         # Case cdscan reports no error, however file wasn't written
         if '/data/cmip5/' in inpath:
@@ -380,9 +383,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad4 = xmlBad4 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
+        # Rename problem files
+        keepFile(outfileName,4)
     elif fileNone:
         # Case cdscan reports no error, however file wasn't written
         if '/data/cmip5/' in inpath:
@@ -393,9 +395,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
         if batch_print:
             print "".join(['**',err_text,inpath,' **'])
         xmlBad5 = xmlBad5 + 1;
-        # Purge problem files
-        if os.path.isfile(outfileName):
-            os.remove(outfileName)
+        # Rename problem files
+        keepFile(outfileName,5)
     else:
         writeToLog(logFile,"".join(['** ',format(xmlGood,"07d"),' ',logtime_format,' ',time_since_start_s,'s success creating: ',outfileName,' **']))
         xmlGood = xmlGood + 1;
