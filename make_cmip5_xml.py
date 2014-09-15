@@ -6,7 +6,6 @@ Paul J. Durack 23rd January 2012
 
 This script builds *.xml files for all "interesting" model variables
 
-PJD 23 Jan 2012 to 18 Nov 2013  - Comments purged, look in _obsolete directory for 140915a_* file
 PJD 24 Mar 2014     - Added tauuo and tauvo variables to ocn realm
 PJD 12 May 2014     - Added rluscs to the variable list (Mark Z requested)
 PJD  7 Aug 2014     - Updated to include new path /cmip5_css02/cmip5
@@ -50,6 +49,7 @@ PJD 20 Aug 2014     - Reordered file so that function declaration is blocked up 
 PJD 20 Aug 2014     - Moved mkDirNoOSErr and sysCallTimeout to durolib
 PJD 21 Aug 2014     - Cleaned up module imports   
 PJD 21 Aug 2014     - Confirmed directory walking - exclusion code is working correctly
+PJD 15 Sep 2014     - PJD 23 Jan 2012 to 18 Nov 2013: Comments purged, look in _obsolete directory for 140915a_* file
 
                     - TODO:
                     Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
