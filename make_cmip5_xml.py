@@ -52,10 +52,9 @@ PJD 21 Aug 2014     - Confirmed directory walking - exclusion code is working co
 PJD 15 Sep 2014     - PJD 23 Jan 2012 to 18 Nov 2013: Comments purged, look in _obsolete directory for 140915a_* file
 PJD 15 Sep 2014     - Updated HadGEM2-AO data recovery to use realm rather than vars to assign tableId ('pr' duplicated across tables)
 PJD 15 Sep 2014     - Updated ocn_vars to include boundary fluxes
-PJD 15 Sep 2014     - Added keepFile function and updated purge commands
+PJD 15 Sep 2014     - Added keepFile function - renames cdscan warning files '..latestX.WARNX.xml' rather than purging
 
                     - TODO:
-                    Consider renaming cdscan warning files '..latestX.WARN.xml' rather than purging
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     Add model masternodes
@@ -101,7 +100,7 @@ if 'e' in locals():
 
 # Define functions
 def keepFile(outfileName,errStr):
-    outfileNameNew = replace(outfileName,'.latestX.xml',''.join(['.latestX.WARN',errStr,'.xml']))
+    outfileNameNew = replace(outfileName,'.latestX.xml',''.join(['.latestX.WARN',str(errStr),'.xml']))
     if os.path.isfile(outfileName):
         os.rename(outfileName,outfileNameNew)
 
@@ -263,8 +262,6 @@ def pathToFile(inpath,start_time,queue1):
     #return(data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars) ; # Non-parallel version of code for testing
     queue1.put_nowait([data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars]) ; # Queue
     return
-
-
 
 
 def test_latest(tracking_id,creation_date):
