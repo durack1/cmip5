@@ -53,6 +53,7 @@ PJD 15 Sep 2014     - PJD 23 Jan 2012 to 18 Nov 2013: Comments purged, look in _
 PJD 15 Sep 2014     - Updated HadGEM2-AO data recovery to use realm rather than vars to assign tableId ('pr' duplicated across tables)
 PJD 15 Sep 2014     - Updated ocn_vars to include boundary fluxes
 PJD 15 Sep 2014     - Added keepFile function - renames cdscan warning files '..latestX.WARNX.xml' rather than purging
+PJD 19 Nov 2014     - Added 'amip4K','amip4xCO2' experiments (Chris T requested)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -120,7 +121,7 @@ def pathToFile(inpath,start_time,queue1):
     for (path,dirs,files) in scandir.walk(inpath,topdown=True):
         
         ## IGNORE EXPERIMENTS - AT SEARCH LEVEL - SPEED UP SEARCH ##
-        expExclude = set(['amip4K','amip4xCO2','aqua4K','aqua4xCO2','aquaControl','esmControl','esmFdbk1','esmFixClim1',
+        expExclude = set(['aqua4K','aqua4xCO2','aquaControl','esmControl','esmFdbk1','esmFixClim1',
                           'esmFixClim2','esmHistorical','esmrcp85','Igm','midHolocene','sst2030','sst2090','sst2090rcp45',
                           'sstClim','sstClim4xCO2','sstClimAerosol','sstClimSulfate','volcIn2010'])
         timeExclude = set(['3hr','6hr','day','monClim','yr'])
@@ -158,8 +159,8 @@ def pathToFile(inpath,start_time,queue1):
             i1 = i1 + 1 ; # Increment counter
     
     # Create variable and realm names
-    experiments = ['1pctCO2','abrupt4xCO2','amip','amipFuture','historical','historicalExt','historicalGHG','historicalMisc',
-                   'historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
+    experiments = ['1pctCO2','abrupt4xCO2','amip','amip4K','amip4xCO2','amipFuture','historical','historicalExt',
+                   'historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
     temporal    = ['fx','mon'] ; # For months and fixed fields only
     atm_vars    = ['cl','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
                    'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rluscs','rlut',
