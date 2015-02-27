@@ -175,6 +175,7 @@ def pathToFile(inpath,start_time,queue1):
                    'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
     seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
     len_vars    = len(atm_vars)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
+    list_vars   = atm_vars+fx_vars+land_vars+ocn_vars+seaIce_vars ; # Create length counter for reporting
     
     # Check for valid outputs
     if not data_paths:
@@ -186,7 +187,7 @@ def pathToFile(inpath,start_time,queue1):
         return
     
     # Mine inputs for info and create outfiles and paths
-    data_outfiles = [] ; data_outfiles_paths = [] ; i2 = 0
+    data_outfiles,data_outfiles_paths = [[] for _ in range(2)] ; i2 = 0
     for path in data_paths:
         path_bits   = path.split('/')
         # Set indexing
@@ -208,16 +209,18 @@ def pathToFile(inpath,start_time,queue1):
                 realm = 'atm'
             realisation = path_bits[pathIndex+9] ; #11
             # Check for source path and order variable/version info
-            if 'scratch' in path_bits:
-                version     = path_bits[pathIndex+10] ; #12
-                variable    = path_bits[pathIndex+11] ; #13
-            # Kludgey fix for FGOALS-g2 inverted version/variable
-            elif 'data' in path_bits and '/cmip5_css01/data/cmip5/output1/LASG-CESS/FGOALS-g2' in path:
+            if path_bits[pathIndex+10] in list_vars:
+                variable    = path_bits[pathIndex+10]
+                version     = path_bits[pathIndex+11]
+            elif path_bits[pathIndex+11] in list_vars:
                 version     = path_bits[pathIndex+10]
                 variable    = path_bits[pathIndex+11]
-            elif 'data' in path_bits:
-                version     = path_bits[pathIndex+11] ; #13
-                variable    = path_bits[pathIndex+10] ; #12
+                #if 'data' in path_bits:
+                #    print path
+            else:
+                # Cases where variables are not in list_vars
+                #print model,experiment,time_ax,realm,tableId,'10:',path_bits[pathIndex+10],'11:',path_bits[pathIndex+11]
+                continue
             # Getting versioning/latest info
             testfile = os.listdir(path)[0]
             # Test for zero-size file before trying to open
