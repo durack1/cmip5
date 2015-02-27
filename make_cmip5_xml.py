@@ -96,11 +96,6 @@ from string import replace
 from subprocess import call,Popen,PIPE
 #import cdms2 as cdm
 
-# Cleanup interactive/spyder sessions
-if 'e' in locals():
-    del(e,pi,sctypeNA,typeNA)
-    gc.collect()
-
 # Define functions
 def keepFile(outfileName,errStr):
     outfileNameNew = replace(outfileName,'.latestX.xml',''.join(['.latestX.WARN',str(errStr),'.xml']))
