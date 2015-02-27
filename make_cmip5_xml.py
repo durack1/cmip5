@@ -55,6 +55,7 @@ PJD 15 Sep 2014     - Updated HadGEM2-AO data recovery to use realm rather than 
 PJD 15 Sep 2014     - Updated ocn_vars to include boundary fluxes
 PJD 15 Sep 2014     - Added keepFile function - renames cdscan warning files '..latestX.WARNX.xml' rather than purging
 PJD 19 Nov 2014     - Added 'amip4K','amip4xCO2' experiments (Chris T requested)
+PJD 27 Feb 2015     - Updated to match variable to path_bits - deals with LASG-CESS/FGOALS-g2 and FIO/fio-esm published data paths
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
