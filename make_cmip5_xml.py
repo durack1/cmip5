@@ -212,7 +212,7 @@ def pathToFile(inpath,start_time,queue1):
                 version     = path_bits[pathIndex+10] ; #12
                 variable    = path_bits[pathIndex+11] ; #13
             # Kludgey fix for FGOALS-g2 inverted version/variable
-            elif 'data' in path_bits and 'LASG-CESS/FGOALS-g2' in path:
+            elif 'data' in path_bits and '/cmip5_css01/data/cmip5/output1/LASG-CESS/FGOALS-g2' in path:
                 version     = path_bits[pathIndex+10]
                 variable    = path_bits[pathIndex+11]
             elif 'data' in path_bits:
