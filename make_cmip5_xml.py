@@ -114,9 +114,9 @@ def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)']))
     return
 
-
+#%%
 def pathToFile(inpath,start_time,queue1):
-#def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
+#$#def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
     #for (path,dirs,files) in os.walk(inpath,topdown=True):
     for (path,dirs,files) in scandir.walk(inpath,topdown=True):
@@ -181,7 +181,7 @@ def pathToFile(inpath,start_time,queue1):
         #print "** No valid data found on path.. **"
         # Create timestamp as function completes
         time_since_start = time.time() - start_time
-        #return('','',time_since_start,i1,0,len_vars) ; # Non-parallel version of code for testing
+        #$#return('','',time_since_start,i1,0,len_vars) ; # Non-parallel version of code for testing
         queue1.put_nowait(['','',time_since_start,i1,0,len_vars]) ; # Queue
         return
     
@@ -211,6 +211,10 @@ def pathToFile(inpath,start_time,queue1):
             if 'scratch' in path_bits:
                 version     = path_bits[pathIndex+10] ; #12
                 variable    = path_bits[pathIndex+11] ; #13
+            # Kludgey fix for FGOALS-g2 inverted version/variable
+            elif 'data' in path_bits and 'LASG-CESS/FGOALS-g2' in path:
+                version     = path_bits[pathIndex+10]
+                variable    = path_bits[pathIndex+11]
             elif 'data' in path_bits:
                 version     = path_bits[pathIndex+11] ; #13
                 variable    = path_bits[pathIndex+10] ; #12
@@ -261,10 +265,10 @@ def pathToFile(inpath,start_time,queue1):
     # Create timestamp as function completes
     time_since_start = time.time() - start_time
     
-    #return(data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars) ; # Non-parallel version of code for testing
+    #$#return(data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars) ; # Non-parallel version of code for testing
     queue1.put_nowait([data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars]) ; # Queue
     return
-
+#%%
 
 def test_latest(tracking_id,creation_date):
     # There is a need to map models (rather than institutes) to index nodes as NSF-DOE-NCAR has multiple index nodes according to Karl T    
