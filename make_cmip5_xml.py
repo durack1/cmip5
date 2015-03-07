@@ -56,6 +56,7 @@ PJD 15 Sep 2014     - Updated ocn_vars to include boundary fluxes
 PJD 15 Sep 2014     - Added keepFile function - renames cdscan warning files '..latestX.WARNX.xml' rather than purging
 PJD 19 Nov 2014     - Added 'amip4K','amip4xCO2' experiments (Chris T requested)
 PJD 27 Feb 2015     - Updated to match variable to path_bits - deals with LASG-CESS/FGOALS-g2 and FIO/fio-esm published data paths
+PJD  7 Mar 2015     - Disabled sysCallTimeout - uncertain what the issue is here
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -558,7 +559,7 @@ logfile = os.path.join(log_path,"".join([time_format,'_make_cmip5_xml-',trim_hos
 # Logging the explicit searched data path
 os.chdir('/cmip5_css02')
 cmd = 'df -h | grep cmip5'
-sysCallTimeout(cmd,5) ; # Test for network connectivity and fail if /cmip5_css02 not alive
+#sysCallTimeout(cmd,5) ; # Test for network connectivity and fail if /cmip5_css02 not alive
 p = Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE)
 out,err = p.communicate()
 writeToLog(logfile,"".join(['TIME: ',time_format]))
