@@ -751,7 +751,7 @@ for count,testfile in enumerate(outfiles):
 # Check whether running for file reporting or xml generation:
 if make_xml:
     # Create counters for xml_good and xml_bad
-    xmlGood = 1; xmlBad1 = 1; xmlBad2 = 1; xmlBad3 = 1; xmlBad4 = 1; xmlBad5 = 1;
+    xmlGood,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5 = [1 for _ in range(6)]
     # Deal with existing *.xml files
     o = glob.glob("".join([host_path,'*/*/mo/*/*.xml']))
     xml_count1 = len(o)
