@@ -91,19 +91,19 @@ PJD 10 Mar 2015     - Added clcalipso to the variable list (Mark Z/Chen Z reques
 
 import argparse,datetime,gc,glob,os,pickle,re,shlex,sys,time
 import scandir ; # Installed locally on oceanonly and crunchy
-from durolib import mkDirNoOSErr,sysCallTimeout,writeToLog
+from durolib import mkDirNoOSErr,writeToLog #sysCallTimeout
 from multiprocessing import Process,Manager
 from socket import gethostname
 from string import replace
 from subprocess import call,Popen,PIPE
 #import cdms2 as cdm
 
-# Define functions
+#%% Define functions
 def keepFile(outfileName,errStr):
     outfileNameNew = replace(outfileName,'.latestX.xml',''.join(['.latestX.WARN',str(errStr),'.xml']))
     if os.path.isfile(outfileName):
         os.rename(outfileName,outfileNameNew)
-
+#%%
 
 def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     outfile_count = len(data_outfiles)
@@ -111,8 +111,8 @@ def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     print "".join([path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',str(outfile_count).ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)'])
     writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)']))
     return
-
 #%%
+
 def pathToFile(inpath,start_time,queue1):
 #$#def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
@@ -335,7 +335,7 @@ def test_latest(tracking_id,creation_date):
     latestbool = True
 
     return latestbool
-
+#%%
 
 def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCode,inpath,outfileName,time_since_start,i,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood):
     time_since_start_s = '%09.2f' % time_since_start
@@ -408,7 +408,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
     return[xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood] # ; Non-parallel version of code
     #queue1.put_nowait([xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood]) ; # Queue
     #return
-
+#%%
 
 def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     infilenames = glob.glob(os.path.join(inpath,'*.nc'))
@@ -504,7 +504,7 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     #return(inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start) ; Non-parallel version of code
     queue1.put_nowait([inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start]) ; # Queue
     return
-
+#%%
 
 
 ##### Set batch mode processing, console printing on/off and multiprocess loading #####
