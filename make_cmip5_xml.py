@@ -57,6 +57,7 @@ PJD 15 Sep 2014     - Added keepFile function - renames cdscan warning files '..
 PJD 19 Nov 2014     - Added 'amip4K','amip4xCO2' experiments (Chris T requested)
 PJD 27 Feb 2015     - Updated to match variable to path_bits - deals with LASG-CESS/FGOALS-g2 and FIO/fio-esm published data paths
 PJD  7 Mar 2015     - Disabled sysCallTimeout - uncertain what the issue is here
+PJD 10 Mar 2015     - Added clcalipso to the variable list (Mark Z/Chen Z requested)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -160,7 +161,7 @@ def pathToFile(inpath,start_time,queue1):
     experiments = ['1pctCO2','abrupt4xCO2','amip','amip4K','amip4xCO2','amipFuture','historical','historicalExt',
                    'historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
     temporal    = ['fx','mon'] ; # For months and fixed fields only
-    atm_vars    = ['cl','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
+    atm_vars    = ['cl','clcalipso','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
                    'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rluscs','rlut',
                    'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
                    'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
