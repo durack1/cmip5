@@ -98,9 +98,10 @@ def pathToFile(inpath,start_time,queue1):
                    'rhopoto','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
                    'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
     seaIce_vars = ['sic','sit','usi','vsi'] ; seaIce_vars.sort()
-    len_vars    = len(atm_vars)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
+    #len_vars    = len(atm_vars)+len(fx_vars)+len(land_vars)+len(ocn_vars)+len(seaIce_vars) ; # Create length counter for reporting
     #list_vars   = atm_vars+fx_vars+land_vars+ocn_vars+seaIce_vars ; # Create length counter for reporting
     list_vars   = seaIce_vars ; # Create length counter for reporting
+    len_vars = len(list_vars)
 
     # Check for valid outputs
     if not data_paths:
