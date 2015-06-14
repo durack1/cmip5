@@ -802,7 +802,8 @@ if make_xml:
     writeToLog(logfile,"".join(['** XML file count - Bad/skipped: ',format(xmlBad-5,"1d"),'; bad1 (cdscan - zero files): ',format(xmlBad1-1,"1d"),'; bad2 (cdscan - warning specified): ',format(xmlBad2-1,"1d"),'; bad3 (read perms): ',format(xmlBad3-1,"1d"),'; bad4 (no outfile): ',format(xmlBad4-1,"1d"),'; bad5 (no infiles): ',format(xmlBad5-1,"1d"),' **']))
 
     # Once run is complete, and xmlGood > 1e5, archive old files and move new files into place
-    if xmlGood > 1e5:
+    #$#if xmlGood > 1e5:
+    if xmlGood > 1:
         time_now = datetime.datetime.now()
         time_format = time_now.strftime("%y%m%d_%H%M%S")
         # Ensure /cmip5 directory is cwd
