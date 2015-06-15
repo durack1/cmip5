@@ -186,7 +186,7 @@ def pathToFile(inpath,start_time,queue1):
                 print 'pathToFile - Exception:',err,path
                 continue
         # Test for list entry and trim experiments and variables to manageable list
-        if (experiment in experiments) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars) or (variable in seaIce_vars) or (variable in land_vars) or (variable in fx_vars) ):
+        if (experiment in experiments) and (time_ax in temporal) and (variable in list_vars):
             data_outfiles.insert(i2,".".join(['cmip5',model,experiment,realisation,time_ax,realm,tableId,variable,"".join(['ver-',version]),lateststr,'xml']))
             data_outfiles_paths.insert(i2,path)
             i2 = i2 + 1
