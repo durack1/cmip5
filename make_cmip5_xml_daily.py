@@ -441,7 +441,7 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
 ##### Set batch mode processing, console printing on/off and multiprocess loading #####
 batch       = True ; # True = on, False = off
 batch_print = False ; # Write log messages to console - suppress from cron daemon ; True = on, False = off
-threadCount = 40 ; # ~36hrs xml creation solo ; 50hrs xml creation crunchy & oceanonly in parallel
+threadCount = 10 ; # ~36hrs xml creation solo ; 50hrs xml creation crunchy & oceanonly in parallel
 ##### Set batch mode processing, console printing on/off and multiprocess loading #####
 
 # Set time counter and grab timestamp
