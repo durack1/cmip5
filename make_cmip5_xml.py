@@ -564,6 +564,8 @@ cmd = 'df -h | grep cmip5'
 p = Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE)
 out,err = p.communicate()
 writeToLog(logfile,"".join(['TIME: ',time_format]))
+writeToLog(logfile,"".join(['MASTER PID: ',pypid]))
+print "".join(['master pid',pypid]) ; # Write master PID to sendmail/stdout
 writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
 writeToLog(logfile,"".join(['FUNCTION: ','scandir.walk']))
 writeToLog(logfile,"".join(['SOURCEFILES:\n',out]))
