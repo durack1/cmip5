@@ -69,7 +69,6 @@ PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     Add model masternodes
                     Fix issue with no valid files being recorded
-                    Add permissions wash over new xml files once copied in place (issue on oceanonly alone)
                     Placing read test in pathToFile will trim out issues with 0-sized files and read permissions, so reporting may need to be relocated
                     Add counters for lat1 vs lat0
                     Report new runtimeError in cdscan - problems with overlapping times, issue in combineKeys function - Report to Jeff/Charles
@@ -77,8 +76,6 @@ PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
                     update for gdo2_data (~8k; 2.2hrs) and css02_scratch (~25k; 7hrs) to scour using multiple threads each - what is the IO vs wait difference?
                      consider using multiprocess.pool to achieve this, so full loads until job(s) are completed
                     Consider using multiprocess.pool (which loads up processes concurrently) rather than multiprocess.Process
-                    Consider adding a ./running file with 0/1 binary for new job to poll before it begins - overruns are a continuing issue
-                     Ensure this file contains the PID of the parent process, so this can be checked for life before attempting to move mo_new to mo dirs
                     Fix duplicate versions - add flag for latest or deprecated - awaiting Bob to create index file as esgquery_index wont cope with 40k queries
                      Conditionally purge xmls with earlier version number (should sort so last generated file is latest)
                     [durack1@crunchy output1]$ pwd
