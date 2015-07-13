@@ -207,10 +207,10 @@ def pathToFile(inpath,start_time,queue1):
             pathIndex = path_bits.index('scratch')
         # Next find DRS start index
         # Naming obtained from http://cmip-pcmdi.llnl.gov/cmip5/docs/cmip5_data_reference_syntax.pdf
-        ActivityTest    = re.compile('cmip[5-6]')
-        ProductTest     = re.compile('output[1-5]')
+        ActivityTest    = re.compile('cmip[5-6]$')
+        ProductTest     = re.compile('^output') ; # Most conform to output[1-3], however CSIRO-Mk3-6-0 doesn't
         CMIPIndex       = [ i for i, item in enumerate(path_bits) if re.match(ActivityTest,item) ][-1] ; # Get last entry
-        if re.match(ProductTest,path_bits[CMIPIndex+1]):
+        if re.search(ProductTest,path_bits[CMIPIndex+1]):
             DRSStartIndex = CMIPIndex+2
         else:
             print path_bits
