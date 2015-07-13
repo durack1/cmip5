@@ -61,6 +61,8 @@ PJD 10 Mar 2015     - Added clcalipso to the variable list (Mark Z/Chen Z reques
 PJD  7 Jul 2015     - Fixed len_vars correctly obtained from list_vars
 PJD  7 Jul 2015     - Add PID of master process to logfile contents (not just filename)/sendmail output
 PJD  9 Jul 2015     - Added checkPID function
+PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
+                    - Generalize path indices using DRS cmip[5-6]/output[1-5] reference point
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -201,31 +203,41 @@ def pathToFile(inpath,start_time,queue1):
     data_outfiles,data_outfiles_paths = [[] for _ in range(2)] ; i2 = 0
     for path in data_paths:
         path_bits   = path.split('/')
-        # Set indexing
+        # Set indexing - first data/scratch
         if 'data' in path_bits:
             pathIndex = path_bits.index('data')
         elif 'scratch' in path_bits:
             pathIndex = path_bits.index('scratch')
-
+        # Next find DRS start index
+        # Naming obtained from http://cmip-pcmdi.llnl.gov/cmip5/docs/cmip5_data_reference_syntax.pdf
+        ActivityTest    = re.compile('cmip[5-6]')
+        ProductTest     = re.compile('output[1-5]')
+        CMIPIndex       = [ i for i, item in enumerate(path_bits) if re.match(ActivityTest,item) ][-1] ; # Get last entry
+        if re.match(ProductTest,path_bits[CMIPIndex+1]):
+            DRSStartIndex = CMIPIndex+2
+        else:
+            print path_bits
+        # Use indices to build output filenames
         try:
-            model       = path_bits[pathIndex+4] ; #6
-            experiment  = path_bits[pathIndex+5] ; #7
-            time_ax     = path_bits[pathIndex+6] ; #8
-            realm       = path_bits[pathIndex+7] ; #9
-            tableId     = path_bits[pathIndex+8] ; #10
+            #institute   = path_bits[DRSStartIndex]
+            model       = path_bits[DRSStartIndex+1] ; #4,6
+            experiment  = path_bits[DRSStartIndex+2] ; #5,7
+            time_ax     = path_bits[DRSStartIndex+3] ; #6,8
+            realm       = path_bits[DRSStartIndex+4] ; #7,9
+            tableId     = path_bits[DRSStartIndex+5] ; #8,10
             # Fix realms to standard acronyms
             if (realm == 'ocean'):
                 realm = 'ocn'
             elif (realm == 'atmos'):
                 realm = 'atm'
-            realisation = path_bits[pathIndex+9] ; #11
+            realisation = path_bits[DRSStartIndex+6] ; #9,11
             # Check for source path and order variable/version info
-            if path_bits[pathIndex+10] in list_vars:
-                variable    = path_bits[pathIndex+10]
-                version     = path_bits[pathIndex+11]
-            elif path_bits[pathIndex+11] in list_vars:
-                version     = path_bits[pathIndex+10]
-                variable    = path_bits[pathIndex+11]
+            if path_bits[DRSStartIndex+7] in list_vars:
+                variable    = path_bits[DRSStartIndex+7] ; #10
+                version     = path_bits[DRSStartIndex+8] ; #11
+            elif path_bits[DRSStartIndex+8] in list_vars:
+                version     = path_bits[DRSStartIndex+7] ; #10
+                variable    = path_bits[DRSStartIndex+8] ; #11
                 #if 'data' in path_bits:
                 #    print path
             else:
@@ -762,7 +774,7 @@ for count,testfile in enumerate(outfiles):
 '''
 
 
-# Check whether running for file reporting or xml generation:
+#%% Check whether running for file reporting or xml generation:
 if make_xml:
     # Check to ensure previous xml creation run has successfully completed or terminated
     logFiles = os.listdir(log_path) ; logFiles.sort()
@@ -777,7 +789,7 @@ if make_xml:
 
     PID = logFile.split('-')
     PID = int(replace(PID[-1].split('.')[-2],'PID',''))
-    # Test for currently running process
+    # Test for currently running process - if found terminate
     if checkPID(PID):
         reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') still active, terminating current process **'])
         print reportStr
