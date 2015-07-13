@@ -58,6 +58,9 @@ PJD 19 Nov 2014     - Added 'amip4K','amip4xCO2' experiments (Chris T requested)
 PJD 27 Feb 2015     - Updated to match variable to path_bits - deals with LASG-CESS/FGOALS-g2 and FIO/fio-esm published data paths
 PJD  7 Mar 2015     - Disabled sysCallTimeout - uncertain what the issue is here
 PJD 10 Mar 2015     - Added clcalipso to the variable list (Mark Z/Chen Z requested)
+PJD  7 Jul 2015     - Fixed len_vars correctly obtained from list_vars
+PJD  7 Jul 2015     - Add PID of master process to logfile contents (not just filename)/sendmail output
+PJD  9 Jul 2015     - Added checkPID function
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -99,20 +102,30 @@ from subprocess import call,Popen,PIPE
 #import cdms2 as cdm
 
 #%% Define functions
+def checkPID(pid):
+    """ Check For the existence of a unix pid. """
+    try:
+        os.kill(pid,0)
+    except OSError:
+        return False
+    else:
+        return True
+
+#%%
 def keepFile(outfileName,errStr):
     outfileNameNew = replace(outfileName,'.latestX.xml',''.join(['.latestX.WARN',str(errStr),'.xml']))
     if os.path.isfile(outfileName):
         os.rename(outfileName,outfileNameNew)
-#%%
 
+#%%
 def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     outfile_count = len(data_outfiles)
     time_since_start_s = '%09.2f' % time_since_start
     print "".join([path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',str(outfile_count).ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)'])
     writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)']))
     return
-#%%
 
+#%%
 def pathToFile(inpath,start_time,queue1):
 #$#def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
@@ -174,7 +187,7 @@ def pathToFile(inpath,start_time,queue1):
     seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
     list_vars   = atm_vars+fx_vars+land_vars+ocn_vars+seaIce_vars ; # Create length counter for reporting
     len_vars    = len(list_vars) ; # Create length counter for reporting
-    
+
     # Check for valid outputs
     if not data_paths:
         #print "** No valid data found on path.. **"
@@ -234,7 +247,7 @@ def pathToFile(inpath,start_time,queue1):
             tracking_id     = '' ; #tracking_id     = f_h.tracking_id
             creation_date   = '' ; #creation_date   = f_h.creation_date
             #f_h.close()
-            if test_latest(tracking_id,creation_date):
+            if testLatest(tracking_id,creation_date):
                 lateststr = 'latestX' ; #lateststr = 'latest1' ; # Latest
             else:
                 lateststr = 'latest0' ; # Not latest
@@ -269,9 +282,9 @@ def pathToFile(inpath,start_time,queue1):
     #$#return(data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars) ; # Non-parallel version of code for testing
     queue1.put_nowait([data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars]) ; # Queue
     return
-#%%
 
-def test_latest(tracking_id,creation_date):
+#%%
+def testLatest(tracking_id,creation_date):
     # There is a need to map models (rather than institutes) to index nodes as NSF-DOE-NCAR has multiple index nodes according to Karl T
     # User cmip5_controlled_vocab.txt file: http://esg-pcmdi.llnl.gov/internal/esg-data-node-documentation/cmip5_controlled_vocab.txt
     # This maps institute_id => (data_node, index_node)
@@ -335,8 +348,8 @@ def test_latest(tracking_id,creation_date):
     latestbool = True
 
     return latestbool
-#%%
 
+#%%
 def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCode,inpath,outfileName,time_since_start,i,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood):
     time_since_start_s = '%09.2f' % time_since_start
     logtime_now = datetime.datetime.now()
@@ -408,8 +421,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
     return[xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood] # ; Non-parallel version of code
     #queue1.put_nowait([xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood]) ; # Queue
     #return
-#%%
 
+#%%
 def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     infilenames = glob.glob(os.path.join(inpath,'*.nc'))
     # Create list of fx vars
@@ -504,9 +517,8 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     #return(inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start) ; Non-parallel version of code
     queue1.put_nowait([inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start]) ; # Queue
     return
+
 #%%
-
-
 ##### Set batch mode processing, console printing on/off and multiprocess loading #####
 batch       = True ; # True = on, False = off
 batch_print = False ; # Write log messages to console - suppress from cron daemon ; True = on, False = off
@@ -752,6 +764,26 @@ for count,testfile in enumerate(outfiles):
 
 # Check whether running for file reporting or xml generation:
 if make_xml:
+    # Check to ensure previous xml creation run has successfully completed or terminated
+    logFiles = os.listdir(log_path) ; logFiles.sort()
+    notLog = True ; logCount = len(logFiles)-1
+    while notLog:
+        print logCount
+        logFile = logFiles[logCount]
+        if logFile.split('.')[-1] == 'log':
+            notLog = False
+        else:
+            logCount = logCount-1
+
+    PID = logFile.split('-')
+    PID = int(replace(PID[-1].split('.')[-2],'PID',''))
+    # Test for currently running process
+    if checkPID(PID):
+        reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') still active, terminating current process **'])
+        print reportStr
+        writeToLog(logfile,reportStr)
+        sys.exit()
+
     # Create counters for xml_good and xml_bad
     xmlGood,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5 = [1 for _ in range(6)]
     # Deal with existing *.xml files
