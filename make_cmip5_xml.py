@@ -58,13 +58,17 @@ PJD 19 Nov 2014     - Added 'amip4K','amip4xCO2' experiments (Chris T requested)
 PJD 27 Feb 2015     - Updated to match variable to path_bits - deals with LASG-CESS/FGOALS-g2 and FIO/fio-esm published data paths
 PJD  7 Mar 2015     - Disabled sysCallTimeout - uncertain what the issue is here
 PJD 10 Mar 2015     - Added clcalipso to the variable list (Mark Z/Chen Z requested)
+PJD  7 Jul 2015     - Fixed len_vars correctly obtained from list_vars
+PJD  7 Jul 2015     - Add PID of master process to logfile contents (not just filename)/sendmail output
+PJD  9 Jul 2015     - Added checkPID function
+PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
+                    - Generalize path indices using DRS cmip[5-6]/output[1-5] reference point
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
                     Add model masternodes
                     Fix issue with no valid files being recorded
-                    Add permissions wash over new xml files once copied in place (issue on oceanonly alone)
                     Placing read test in pathToFile will trim out issues with 0-sized files and read permissions, so reporting may need to be relocated
                     Add counters for lat1 vs lat0
                     Report new runtimeError in cdscan - problems with overlapping times, issue in combineKeys function - Report to Jeff/Charles
@@ -72,8 +76,6 @@ PJD 10 Mar 2015     - Added clcalipso to the variable list (Mark Z/Chen Z reques
                     update for gdo2_data (~8k; 2.2hrs) and css02_scratch (~25k; 7hrs) to scour using multiple threads each - what is the IO vs wait difference?
                      consider using multiprocess.pool to achieve this, so full loads until job(s) are completed
                     Consider using multiprocess.pool (which loads up processes concurrently) rather than multiprocess.Process
-                    Consider adding a ./running file with 0/1 binary for new job to poll before it begins - overruns are a continuing issue
-                     Ensure this file contains the PID of the parent process, so this can be checked for life before attempting to move mo_new to mo dirs
                     Fix duplicate versions - add flag for latest or deprecated - awaiting Bob to create index file as esgquery_index wont cope with 40k queries
                      Conditionally purge xmls with earlier version number (should sort so last generated file is latest)
                     [durack1@crunchy output1]$ pwd
@@ -99,20 +101,30 @@ from subprocess import call,Popen,PIPE
 #import cdms2 as cdm
 
 #%% Define functions
+def checkPID(pid):
+    """ Check For the existence of a unix pid. """
+    try:
+        os.kill(pid,0)
+    except OSError:
+        return False
+    else:
+        return True
+
+#%%
 def keepFile(outfileName,errStr):
     outfileNameNew = replace(outfileName,'.latestX.xml',''.join(['.latestX.WARN',str(errStr),'.xml']))
     if os.path.isfile(outfileName):
         os.rename(outfileName,outfileNameNew)
-#%%
 
+#%%
 def logWrite(logfile,time_since_start,path_name,i1,data_outfiles,len_vars):
     outfile_count = len(data_outfiles)
     time_since_start_s = '%09.2f' % time_since_start
     print "".join([path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',str(outfile_count).ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)'])
     writeToLog(logfile,"".join([time_since_start_s,' : ',path_name.ljust(13),' scan complete.. ',format(i1,"1d").ljust(6),' paths total; ',format(outfile_count,"1d").ljust(6),' output files to be written (',format(len_vars,"1d").ljust(3),' vars sampled)']))
     return
-#%%
 
+#%%
 def pathToFile(inpath,start_time,queue1):
 #$#def pathToFile(inpath,start_time): #; # Non-parallel version of code for testing
     data_paths = [] ; i1 = 0
@@ -174,7 +186,7 @@ def pathToFile(inpath,start_time,queue1):
     seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
     list_vars   = atm_vars+fx_vars+land_vars+ocn_vars+seaIce_vars ; # Create length counter for reporting
     len_vars    = len(list_vars) ; # Create length counter for reporting
-    
+
     # Check for valid outputs
     if not data_paths:
         #print "** No valid data found on path.. **"
@@ -188,31 +200,41 @@ def pathToFile(inpath,start_time,queue1):
     data_outfiles,data_outfiles_paths = [[] for _ in range(2)] ; i2 = 0
     for path in data_paths:
         path_bits   = path.split('/')
-        # Set indexing
+        # Set indexing - first data/scratch
         if 'data' in path_bits:
             pathIndex = path_bits.index('data')
         elif 'scratch' in path_bits:
             pathIndex = path_bits.index('scratch')
-
+        # Next find DRS start index
+        # Naming obtained from http://cmip-pcmdi.llnl.gov/cmip5/docs/cmip5_data_reference_syntax.pdf
+        ActivityTest    = re.compile('cmip[5-6]$')
+        ProductTest     = re.compile('^output') ; # Most conform to output[1-3], however CSIRO-Mk3-6-0 doesn't
+        CMIPIndex       = [ i for i, item in enumerate(path_bits) if re.match(ActivityTest,item) ][-1] ; # Get last entry
+        if re.search(ProductTest,path_bits[CMIPIndex+1]):
+            DRSStartIndex = CMIPIndex+2
+        else:
+            print path_bits
+        # Use indices to build output filenames
         try:
-            model       = path_bits[pathIndex+4] ; #6
-            experiment  = path_bits[pathIndex+5] ; #7
-            time_ax     = path_bits[pathIndex+6] ; #8
-            realm       = path_bits[pathIndex+7] ; #9
-            tableId     = path_bits[pathIndex+8] ; #10
+            #institute   = path_bits[DRSStartIndex]
+            model       = path_bits[DRSStartIndex+1] ; #4,6
+            experiment  = path_bits[DRSStartIndex+2] ; #5,7
+            time_ax     = path_bits[DRSStartIndex+3] ; #6,8
+            realm       = path_bits[DRSStartIndex+4] ; #7,9
+            tableId     = path_bits[DRSStartIndex+5] ; #8,10
             # Fix realms to standard acronyms
             if (realm == 'ocean'):
                 realm = 'ocn'
             elif (realm == 'atmos'):
                 realm = 'atm'
-            realisation = path_bits[pathIndex+9] ; #11
+            realisation = path_bits[DRSStartIndex+6] ; #9,11
             # Check for source path and order variable/version info
-            if path_bits[pathIndex+10] in list_vars:
-                variable    = path_bits[pathIndex+10]
-                version     = path_bits[pathIndex+11]
-            elif path_bits[pathIndex+11] in list_vars:
-                version     = path_bits[pathIndex+10]
-                variable    = path_bits[pathIndex+11]
+            if path_bits[DRSStartIndex+7] in list_vars:
+                variable    = path_bits[DRSStartIndex+7] ; #10
+                version     = path_bits[DRSStartIndex+8] ; #11
+            elif path_bits[DRSStartIndex+8] in list_vars:
+                version     = path_bits[DRSStartIndex+7] ; #10
+                variable    = path_bits[DRSStartIndex+8] ; #11
                 #if 'data' in path_bits:
                 #    print path
             else:
@@ -234,7 +256,7 @@ def pathToFile(inpath,start_time,queue1):
             tracking_id     = '' ; #tracking_id     = f_h.tracking_id
             creation_date   = '' ; #creation_date   = f_h.creation_date
             #f_h.close()
-            if test_latest(tracking_id,creation_date):
+            if testLatest(tracking_id,creation_date):
                 lateststr = 'latestX' ; #lateststr = 'latest1' ; # Latest
             else:
                 lateststr = 'latest0' ; # Not latest
@@ -269,9 +291,9 @@ def pathToFile(inpath,start_time,queue1):
     #$#return(data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars) ; # Non-parallel version of code for testing
     queue1.put_nowait([data_outfiles,data_outfiles_paths,time_since_start,i1,i2,len_vars]) ; # Queue
     return
-#%%
 
-def test_latest(tracking_id,creation_date):
+#%%
+def testLatest(tracking_id,creation_date):
     # There is a need to map models (rather than institutes) to index nodes as NSF-DOE-NCAR has multiple index nodes according to Karl T
     # User cmip5_controlled_vocab.txt file: http://esg-pcmdi.llnl.gov/internal/esg-data-node-documentation/cmip5_controlled_vocab.txt
     # This maps institute_id => (data_node, index_node)
@@ -335,8 +357,8 @@ def test_latest(tracking_id,creation_date):
     latestbool = True
 
     return latestbool
-#%%
 
+#%%
 def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCode,inpath,outfileName,time_since_start,i,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood):
     time_since_start_s = '%09.2f' % time_since_start
     logtime_now = datetime.datetime.now()
@@ -408,8 +430,8 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
     return[xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood] # ; Non-parallel version of code
     #queue1.put_nowait([xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5,xmlGood]) ; # Queue
     #return
-#%%
 
+#%%
 def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     infilenames = glob.glob(os.path.join(inpath,'*.nc'))
     # Create list of fx vars
@@ -504,9 +526,8 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     #return(inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start) ; Non-parallel version of code
     queue1.put_nowait([inpath,outfileName,fileZero,fileWarning,fileNoRead,fileNoWrite,fileNone,errorCode,time_since_start]) ; # Queue
     return
+
 #%%
-
-
 ##### Set batch mode processing, console printing on/off and multiprocess loading #####
 batch       = True ; # True = on, False = off
 batch_print = False ; # Write log messages to console - suppress from cron daemon ; True = on, False = off
@@ -750,8 +771,28 @@ for count,testfile in enumerate(outfiles):
 '''
 
 
-# Check whether running for file reporting or xml generation:
+#%% Check whether running for file reporting or xml generation:
 if make_xml:
+    # Check to ensure previous xml creation run has successfully completed or terminated
+    logFiles = os.listdir(log_path) ; logFiles.sort()
+    notLog = True ; logCount = len(logFiles)-1
+    while notLog:
+        print logCount
+        logFile = logFiles[logCount]
+        if logFile.split('.')[-1] == 'log':
+            notLog = False
+        else:
+            logCount = logCount-1
+
+    PID = logFile.split('-')
+    PID = int(replace(PID[-1].split('.')[-2],'PID',''))
+    # Test for currently running process - if found terminate
+    if checkPID(PID):
+        reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') still active, terminating current process **'])
+        print reportStr
+        writeToLog(logfile,reportStr)
+        sys.exit()
+
     # Create counters for xml_good and xml_bad
     xmlGood,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5 = [1 for _ in range(6)]
     # Deal with existing *.xml files
