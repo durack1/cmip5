@@ -63,6 +63,7 @@ PJD  7 Jul 2015     - Add PID of master process to logfile contents (not just fi
 PJD  9 Jul 2015     - Added checkPID function
 PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
                     - Generalize path indices using DRS cmip[5-6]/output[1-5] reference point
+PJD 16 Jul 2015     - Added /cmip5_css02/scratch/_gc/ to search path (new scan)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -166,6 +167,7 @@ def pathToFile(inpath,start_time,queue1):
 
         if files != [] and dirs == []:
             # Append to list variable
+            #$#print i1,path #$#
             data_paths += [path]
             i1 = i1 + 1 ; # Increment counter
 
@@ -625,6 +627,10 @@ p6.start() ; print "".join(['p6 pid: ',str(p6.ident)])
 queue7 = manager0.Queue(maxsize=0)
 p7 = Process(target=pathToFile,args=('/cmip5_css02/cmip5/data/cmip5/',start_time,queue7))
 p7.start() ; print "".join(['p7 pid: ',str(p7.ident)])
+# css02_\_gc
+queue8 = manager0.Queue(maxsize=0)
+p8 = Process(target=pathToFile,args=('/cmip5_css02/scratch/_gc/',start_time,queue8))
+p8.start() ; print "".join(['p8 pid: ',str(p8.ident)])
 
 # Consider parallelising css02_scratch in particular - queue object doesn't play with p.map
 '''
@@ -685,6 +691,9 @@ logWrite(logfile,time_since_start,'css02_data',i1,css02_data_outfiles,len_vars)
 p7.join()
 [css02_cm5_outfiles,css02_cm5_outfiles_paths,time_since_start,i1,i2,len_vars] = queue7.get_nowait()
 logWrite(logfile,time_since_start,'css02_cmip5',i1,css02_cm5_outfiles,len_vars)
+p8.join()
+[css02_gc_outfiles,css02_gc_outfiles_paths,time_since_start,i1,i2,len_vars] = queue8.get_nowait()
+logWrite(logfile,time_since_start,'css02_gc',i1,css02_gc_outfiles,len_vars)
 
 # Generate master lists from sublists
 outfiles_paths = list(gdo2_data_outfiles_paths)
@@ -694,6 +703,7 @@ outfiles_paths.extend(css01_scratch_outfiles_paths) ; # Add css01_scratch to mas
 outfiles_paths.extend(css02_data_outfiles_paths) ; # Add css02_data to master
 outfiles_paths.extend(css02_scratch_outfiles_paths) ; # Add css02_scratch to master
 outfiles_paths.extend(css02_cm5_outfiles_paths) ; # Add css02_cmip5 to master
+outfiles_paths.extend(css02_gc_outfiles_paths) ; # Add css02_gc to master
 
 outfiles = list(gdo2_data_outfiles)
 outfiles.extend(gdo2_scratch_outfiles) ; # Add gdo2_scratch to master
@@ -702,6 +712,7 @@ outfiles.extend(css01_scratch_outfiles) ; # Add css01_scratch to master
 outfiles.extend(css02_data_outfiles) ; # Add css02_data to master
 outfiles.extend(css02_scratch_outfiles) ; # Add css02_scratch to master
 outfiles.extend(css02_cm5_outfiles) ; # Add css02_cmip5 to master
+outfiles.extend(css02_gc_outfiles) ; # Add css02_gc to master
 
 # Sort lists by outfiles
 outfilesAndPaths = zip(outfiles,outfiles_paths)
