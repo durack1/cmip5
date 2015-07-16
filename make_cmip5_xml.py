@@ -631,6 +631,10 @@ p7.start() ; print "".join(['p7 pid: ',str(p7.ident)])
 queue8 = manager0.Queue(maxsize=0)
 p8 = Process(target=pathToFile,args=('/cmip5_css02/scratch/_gc/',start_time,queue8))
 p8.start() ; print "".join(['p8 pid: ',str(p8.ident)])
+# css01_\_gc
+queue9 = manager0.Queue(maxsize=0)
+p9 = Process(target=pathToFile,args=('/cmip5_css01/scratch/_gc/',start_time,queue9))
+p9.start() ; print "".join(['p9 pid: ',str(p9.ident)])
 
 # Consider parallelising css02_scratch in particular - queue object doesn't play with p.map
 '''
@@ -694,6 +698,9 @@ logWrite(logfile,time_since_start,'css02_cmip5',i1,css02_cm5_outfiles,len_vars)
 p8.join()
 [css02_gc_outfiles,css02_gc_outfiles_paths,time_since_start,i1,i2,len_vars] = queue8.get_nowait()
 logWrite(logfile,time_since_start,'css02_gc',i1,css02_gc_outfiles,len_vars)
+p9.join()
+[css01_gc_outfiles,css01_gc_outfiles_paths,time_since_start,i1,i2,len_vars] = queue9.get_nowait()
+logWrite(logfile,time_since_start,'css01_gc',i1,css01_gc_outfiles,len_vars)
 
 # Generate master lists from sublists
 outfiles_paths = list(gdo2_data_outfiles_paths)
@@ -704,6 +711,7 @@ outfiles_paths.extend(css02_data_outfiles_paths) ; # Add css02_data to master
 outfiles_paths.extend(css02_scratch_outfiles_paths) ; # Add css02_scratch to master
 outfiles_paths.extend(css02_cm5_outfiles_paths) ; # Add css02_cmip5 to master
 outfiles_paths.extend(css02_gc_outfiles_paths) ; # Add css02_gc to master
+outfiles_paths.extend(css01_gc_outfiles_paths) ; # Add css01_gc to master
 
 outfiles = list(gdo2_data_outfiles)
 outfiles.extend(gdo2_scratch_outfiles) ; # Add gdo2_scratch to master
@@ -713,6 +721,7 @@ outfiles.extend(css02_data_outfiles) ; # Add css02_data to master
 outfiles.extend(css02_scratch_outfiles) ; # Add css02_scratch to master
 outfiles.extend(css02_cm5_outfiles) ; # Add css02_cmip5 to master
 outfiles.extend(css02_gc_outfiles) ; # Add css02_gc to master
+outfiles.extend(css01_gc_outfiles) ; # Add css01_gc to master
 
 # Sort lists by outfiles
 outfilesAndPaths = zip(outfiles,outfiles_paths)
