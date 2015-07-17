@@ -996,6 +996,13 @@ if make_xml:
     else:
         print "".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **'])
         writeToLog(logfile,"".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **']))
+    
+    # Run complete, now compress logfile
+    f_in = open(logfile, 'rb')
+    f_out = gzip.open(replace(logfile,'.log','.logz'), 'wb')
+    f_out.writelines(f_in)
+    f_out.close()
+    f_in.close()
 
 else:
     print "** make_cmip5_xml.py run in report mode **"
