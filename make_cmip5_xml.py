@@ -65,6 +65,7 @@ PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
                     - Generalize path indices using DRS cmip[5-6]/output[1-5] reference point
 PJD 16 Jul 2015     - Added /cmip5_css02/scratch/_gc/ to search path (new scan)
 PJD 17 Jul 2015     - Corrected checkPID query to skip current logFile - was terminating itself
+PJD 17 Jul 2015     - Converted diagnostic file to be written using cPickle and gzipped
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -93,7 +94,7 @@ PJD 17 Jul 2015     - Corrected checkPID query to skip current logFile - was ter
 @author: durack1
 """
 
-import argparse,datetime,gc,glob,os,pickle,re,shlex,sys,time
+import argparse,cPickle,datetime,gc,glob,gzip,os,re,shlex,sys,time
 import scandir ; # Installed locally on oceanonly and crunchy
 from durolib import mkDirNoOSErr,writeToLog #sysCallTimeout
 from multiprocessing import Process,Manager
@@ -753,12 +754,12 @@ for count,testfile in enumerate(outfiles):
             counter = counter+1
 
 # For debugging save to file
-time_now = datetime.datetime.now()
-time_format = time_now.strftime("%y%m%d_%H%M%S")
-f = open(os.path.join(log_path,"".join([time_format,'_list_outfiles.pickle'])),'w')
-pickle.dump([outfiles,outfiles_new,outfiles_paths,outfiles_paths_new],f)
+time_format = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
+outFile = os.path.join(log_path,"".join([time_format,'_list_outfiles.cpklz']))
+f = gzip.open(outFile,'wb')
+cPickle.dump([outfiles,outfiles_new,outfiles_paths,outfiles_paths_new],f)
 f.close()
-del(time_now,time_format,i1,i2,len_vars,time_since_start)
+del(outFile,f,time_format,i1,i2,len_vars,time_since_start) ; gc.collect()
 
 # Reallocate variables
 outfiles = outfiles_new
@@ -995,6 +996,14 @@ if make_xml:
     else:
         print "".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **'])
         writeToLog(logfile,"".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **']))
+    
+    # Run complete, now compress logfile
+    fIn = open(logfile, 'rb')
+    fOut = gzip.open(replace(logfile,'.log','.logz'), 'wb')
+    fOut.writelines(fIn)
+    fOut.close()
+    fIn.close()
+    #os.remove(logfile)
 
 else:
     print "** make_cmip5_xml.py run in report mode **"
