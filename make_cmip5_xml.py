@@ -64,6 +64,7 @@ PJD  9 Jul 2015     - Added checkPID function
 PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
                     - Generalize path indices using DRS cmip[5-6]/output[1-5] reference point
 PJD 16 Jul 2015     - Added /cmip5_css02/scratch/_gc/ to search path (new scan)
+PJD 17 Jul 2015     - Corrected checkPID query to skip current logFile - was terminating itself
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -104,6 +105,8 @@ from subprocess import call,Popen,PIPE
 #%% Define functions
 def checkPID(pid):
     """ Check For the existence of a unix pid. """
+    # First ensure pid is int type
+    pid = int(pid)
     try:
         os.kill(pid,0)
     except OSError:
@@ -794,24 +797,35 @@ for count,testfile in enumerate(outfiles):
 #%% Check whether running for file reporting or xml generation:
 if make_xml:
     # Check to ensure previous xml creation run has successfully completed or terminated
-    logFiles = os.listdir(log_path) ; logFiles.sort()
-    notLog = True ; logCount = len(logFiles)-1
-    while notLog:
-        print logCount
-        logFile = logFiles[logCount]
-        if logFile.split('.')[-1] == 'log':
-            notLog = False
-        else:
-            logCount = logCount-1
-
+    logFiles = glob.glob(os.path.join(log_path,'*.log')) ; logFiles.sort()
+    logCount = len(logFiles)-1
+    # First check current process is running
+    logFile = logFiles[logCount]
     PID = logFile.split('-')
-    PID = int(replace(PID[-1].split('.')[-2],'PID',''))
-    # Test for currently running process - if found terminate
+    PID = replace(PID[-1].split('.')[-2],'PID','')
+    if checkPID(PID):
+        reportStr = ''.join(['** make_cmip5_xml.py run (PID: ',str(PID),') starting, querying for existing previous process **'])
+        print reportStr
+        writeToLog(logfile,reportStr)
+        logCount = logCount-1 ; # decrement count by 1
+    else:
+        pass
+    
+    # Check previous process existence - assumes no 'test' logs have been created
+    logFile = logFiles[logCount]
+    PID = logFile.split('-')
+    PID = replace(PID[-1].split('.')[-2],'PID','')    
     if checkPID(PID):
         reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') still active, terminating current process **'])
         print reportStr
         writeToLog(logfile,reportStr)
         sys.exit()
+    else:
+        reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') not found, continuing current process **'])
+        print reportStr
+        writeToLog(logfile,reportStr)        
+
+    del(logFiles,logCount,logFile,PID,reportStr) ; gc.collect()
 
     # Create counters for xml_good and xml_bad
     xmlGood,xmlBad1,xmlBad2,xmlBad3,xmlBad4,xmlBad5 = [1 for _ in range(6)]
