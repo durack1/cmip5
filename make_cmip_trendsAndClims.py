@@ -129,16 +129,12 @@ import cdms2 as cdm
 import cdtime as cdt
 import cdutil as cdu
 import numpy as np
-from durolib import fixInterpAxis,fixVarUnits,globalAttWrite,writeToLog
+from durolib import fixInterpAxis,fixVarUnits,globalAttWrite,trimModelList,writeToLog
 from genutil.statistics import linearregression
 from socket import gethostname
 from string import replace
 #from matplotlib.pyplot import pause
 #from numpy import float32
-
-if 'e' in locals():
-    del(e,pi,sctypeNA,typeNA)
-    gc.collect()
 
 # Turn off cdat ping reporting - Does this speed up Spyder?
 cdat_info.ping = False
@@ -150,6 +146,7 @@ cdm.setNetcdfDeflateFlag(1) ; # was 0 130717
 cdm.setNetcdfDeflateLevelFlag(9) ; # was 0 130717
 cdm.setAutoBounds(1) ; # Ensure bounds on time and depth axes are generated
 
+#%%
 start_time = time.time() ; # Set time counter
 
 # Set conditional whether files are created or just numbers are calculated
@@ -199,8 +196,8 @@ else:
     start_yr    = int(args.start_yr)
     end_yr      = int(args.end_yr)
     time_yrs    = "".join([str(start_yr),'-',str(end_yr)])
-    
-# Now use provided args
+
+#%% Now use provided args
 all_files = False
 all_realms = False
 model_suite = args.model_suite
@@ -254,9 +251,7 @@ realm = 'atm'
 variable = 'tas'
 driftcorrect = 'False'
 '''
-#%%
-
-# Set host information and directories
+#%% Set host information and directories
 host_name = gethostname()
 if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
     trim_host = replace(host_name,'.llnl.gov','')
@@ -273,16 +268,15 @@ else:
     sys.exit()
 
 # Set logfile attributes
-time_now = datetime.datetime.now()
-time_format = time_now.strftime("%y%m%d_%H%M%S")
+time_format = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
 logfile = os.path.join(host_path,"".join([time_format,'_make_',model_suite,'_trendsAndClims-',experiment,'-',realm,'-',variable,'-',time_yrs,'-',trim_host,'.log']))
 #logfile = os.path.join(host_path,'tmp',"".join([time_format,'_make_',model_suite,'_trendsAndClims-',experiment,'-',realm,'-',variable,'-',time_yrs,'-',trim_host,'.log'])) ; ## TEST ##
 # Create logfile
 writeToLog(logfile,"".join(['TIME: ',time_format]))
 writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
-del(time_format,time_now) ; gc.collect()
+del(time_format) ; gc.collect()
 
-# Get list of infiles (*.nc) and 3D (*.xml)
+#%% Get list of infiles (*.nc) and 3D (*.xml)
 if all_files and all_realms:
     print 'all_files and all_realms'
     filelist1 = glob.glob(os.path.join(host_path,'*/*/an/*/*.nc'))
@@ -304,7 +298,10 @@ filelist = list(filelist1)
 filelist.extend(filelist2) ; filelist.sort()
 del(filelist1,filelist2) ; gc.collect()
 
-# Trim out variables and experiments of no interest
+#%% Purge obsolete files
+filelist = trimModelList(filelist)
+
+#%% Trim out variables and experiments of no interest
 vars_atm_exclude = ['evspsbl','hfls','hfss','hurs','huss','prw','ps','psl','rlds','rlus','rsds',
                     'rsus','sfcWind','tasmax','tasmin','tauu','tauv','ts','uas','vas']
 vars_ocn_exclude = ['soga','uo']
