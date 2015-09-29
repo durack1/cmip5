@@ -99,6 +99,7 @@ PJD 17 May 2014     - Added zos to valid variable list
 PJD 19 May 2014     - Tweaks to get zos drift working
 PJD 20 May 2014     - logic fixes for zos driftcorrect (should be applicable for other vars)
 PJD 21 May 2014     - Replaced trip_try statements with if driftcorrect: continues
+PJD 29 Sep 2015     - Added trimModelList and general code cleanup
                     - TODO: Cleanup up arguments
                     - TODO: Consider using latest (by date) and longest piControl file in drift calculation - currently using first indexed
                       Code appears to mimic source file numbers
