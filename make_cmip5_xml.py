@@ -67,6 +67,7 @@ PJD 16 Jul 2015     - Added /cmip5_css02/scratch/_gc/ to search path (new scan)
 PJD 17 Jul 2015     - Corrected checkPID query to skip current logFile - was terminating itself
 PJD 17 Jul 2015     - Converted diagnostic file to be written using cPickle and gzipped
 PJD 18 Nov 2015     - Updated xmlWrite to correctly report 'Variable \'%s\' is duplicated - RunTimeError
+PJD 18 Nov 2015     - Updated to include all energy budget terms (LImon table added)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -177,22 +178,23 @@ def pathToFile(inpath,start_time,queue1):
             i1 = i1 + 1 ; # Increment counter
 
     # Create variable and realm names
-    experiments = ['1pctCO2','abrupt4xCO2','amip','amip4K','amip4xCO2','amipFuture','historical','historicalExt',
-                   'historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
-    temporal    = ['fx','mon'] ; # For months and fixed fields only
-    atm_vars    = ['cl','clcalipso','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
-                   'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rluscs','rlut',
-                   'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
-                   'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
-    atmOrocn    = ['atm','ocn'] ; atmOrocn.sort()
-    fx_vars     = ['areacella','areacello','basin','deptho','orog','sftlf','sftof','volcello'] ; fx_vars.sort()
-    land_vars   = ['mrro','mrros','tsl'] ; land_vars.sort()
-    ocn_vars    = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
-                   'rhopoto','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
-                   'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
-    seaIce_vars = ['sic','sit'] ; seaIce_vars.sort()
-    list_vars   = atm_vars+fx_vars+land_vars+ocn_vars+seaIce_vars ; # Create length counter for reporting
-    len_vars    = len(list_vars) ; # Create length counter for reporting
+    experiments     = ['1pctCO2','abrupt4xCO2','amip','amip4K','amip4xCO2','amipFuture','historical','historicalExt',
+                       'historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
+    temporal        = ['fx','mon'] ; # For months and fixed fields only
+    atmOrocn        = ['atm','ocn'] ; atmOrocn.sort()
+    atm_vars        = ['cl','clcalipso','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
+                       'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rluscs','rlut',
+                       'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
+                       'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
+    fx_vars         = ['areacella','areacello','basin','deptho','orog','sftlf','sftof','volcello'] ; fx_vars.sort()
+    land_vars       = ['mrro','mrros','tsl'] ; land_vars.sort()
+    ocn_vars        = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
+                       'rhopoto','rsds','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
+                       'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
+    seaIce_vars     = ['sic','sim','sit','snc','snd'] ; seaIce_vars.sort()
+    landIce_vars    = ['snc','snd','snw','tpf','pflw'] ; landIce_vars.sort()
+    list_vars       = atm_vars+fx_vars+land_vars+ocn_vars+seaIce_vars+landIce_vars ; # Create length counter for reporting
+    len_vars        = len(list_vars) ; # Create length counter for reporting
 
     # Check for valid outputs
     if not data_paths:
@@ -271,10 +273,12 @@ def pathToFile(inpath,start_time,queue1):
             # Case HadGEM2-AO - attempt to recover data
             if 'HadGEM2-AO' in model and experiment in ['historical','rcp26','rcp45','rcp60','rcp85']:
                 variable    = path_bits[pathIndex+8]
-                if realm in 'atm':
+                if realm in   'atm':
                     tableId = 'Amon'
                 elif realm in 'ocn':
                     tableId = 'Omon'
+                elif realm in 'landIce':
+                    tableId = 'LImon'
                 elif realm in 'land':
                     tableId = 'Lmon'
                 elif realm in 'seaIce':
@@ -287,7 +291,7 @@ def pathToFile(inpath,start_time,queue1):
                 print 'pathToFile - Exception:',err,path
                 continue
         # Test for list entry and trim experiments and variables to manageable list
-        if (experiment in experiments) and (time_ax in temporal) and ( (variable in ocn_vars) or (variable in atm_vars) or (variable in seaIce_vars) or (variable in land_vars) or (variable in fx_vars) ):
+        if (experiment in experiments) and (time_ax in temporal) and (variable in list_vars):
             data_outfiles.insert(i2,".".join(['cmip5',model,experiment,realisation,time_ax,realm,tableId,variable,"".join(['ver-',version]),lateststr,'xml']))
             data_outfiles_paths.insert(i2,path)
             i2 = i2 + 1
