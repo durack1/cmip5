@@ -68,6 +68,7 @@ PJD 17 Jul 2015     - Corrected checkPID query to skip current logFile - was ter
 PJD 17 Jul 2015     - Converted diagnostic file to be written using cPickle and gzipped
 PJD 18 Nov 2015     - Updated xmlWrite to correctly report 'Variable \'%s\' is duplicated - RunTimeError
 PJD 18 Nov 2015     - Updated to include all energy budget terms (LImon table added)
+PJD 18 Nov 2015     - Updated to resolve log and cpkl file extensions and containers
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -765,11 +766,18 @@ for count,testfile in enumerate(outfiles):
 
 # For debugging save to file
 time_format = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-outFile = os.path.join(log_path,"".join([time_format,'_list_outfiles.cpklz']))
-f = gzip.open(outFile,'wb')
-cPickle.dump([outfiles,outfiles_new,outfiles_paths,outfiles_paths_new],f)
-f.close()
-del(outFile,f,time_format,i1,i2,len_vars,time_since_start) ; gc.collect()
+outFile = os.path.join(log_path,"".join([time_format,'_list_outfiles.cpkl']))
+f1 = open(outFile,'wb')
+cPickle.dump([outfiles,outfiles_new,outfiles_paths,outfiles_paths_new],f1)
+f1.close()
+fIn = open(outFile,'rb')
+gzfile = replace(outFile,'.cpkl','.cpkl.gz')
+f2 = gzip.open(gzfile,'wb')
+f2.writelines(fIn)
+f2.close()
+fIn.close()
+os.remove(outFile)
+del(outFile,gzfile,f1,f2,fIn,time_format,i1,i2,len_vars,time_since_start) ; gc.collect()
 
 # Reallocate variables
 outfiles = outfiles_new
@@ -808,12 +816,12 @@ for count,testfile in enumerate(outfiles):
 #%% Check whether running for file reporting or xml generation:
 if make_xml:
     # Check to ensure previous xml creation run has successfully completed or terminated
-    logFiles = glob.glob(os.path.join(log_path,'*.log')) ; logFiles.sort()
+    logFiles = glob.glob(os.path.join(log_path,'*.log.gz')) ; logFiles.sort()
     logCount = len(logFiles)-1
     # First check current process is running
     logFile = logFiles[logCount]
     PID = logFile.split('-')
-    PID = replace(PID[-1].split('.')[-2],'PID','')
+    PID = replace(PID[-1].split('.')[-3],'PID','')
     if checkPID(PID):
         reportStr = ''.join(['** make_cmip5_xml.py run (PID: ',str(PID),') starting, querying for existing previous process **'])
         print reportStr
@@ -825,7 +833,7 @@ if make_xml:
     # Check previous process existence - assumes no 'test' logs have been created
     logFile = logFiles[logCount]
     PID = logFile.split('-')
-    PID = replace(PID[-1].split('.')[-2],'PID','')    
+    PID = replace(PID[-1].split('.')[-3],'PID','')    
     if checkPID(PID):
         reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') still active, terminating current process **'])
         print reportStr
@@ -1009,11 +1017,12 @@ if make_xml:
     
     # Run complete, now compress logfile
     fIn = open(logfile, 'rb')
-    fOut = gzip.open(replace(logfile,'.log','.logz'), 'wb')
+    gzfile = replace(logfile,'.log','.log.gz')
+    fOut = gzip.open(gzfile, 'wb')
     fOut.writelines(fIn)
     fOut.close()
     fIn.close()
-    #os.remove(logfile)
+    os.remove(logfile)
 
 else:
     print "** make_cmip5_xml.py run in report mode **"
