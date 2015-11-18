@@ -68,6 +68,7 @@ PJD 17 Jul 2015     - Corrected checkPID query to skip current logFile - was ter
 PJD 17 Jul 2015     - Converted diagnostic file to be written using cPickle and gzipped
 PJD 18 Nov 2015     - Updated xmlWrite to correctly report 'Variable \'%s\' is duplicated - RunTimeError
 PJD 18 Nov 2015     - Updated to include all energy budget terms (LImon table added)
+PJD 18 Nov 2015     - Updated to resolve log and cpkl file extensions and containers
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
