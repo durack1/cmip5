@@ -66,6 +66,7 @@ PJD 13 Jul 2015     - Added PID test before purging and regenerating xmls
 PJD 16 Jul 2015     - Added /cmip5_css02/scratch/_gc/ to search path (new scan)
 PJD 17 Jul 2015     - Corrected checkPID query to skip current logFile - was terminating itself
 PJD 17 Jul 2015     - Converted diagnostic file to be written using cPickle and gzipped
+PJD 18 Nov 2015     - Updated xmlWrite to correctly report 'Variable \'%s\' is duplicated - RunTimeError
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -504,6 +505,11 @@ def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
             if err5 == -1: err5 = len(err)-1 ; # Problem 2 - cdscan error - 'Warning, file XXXX, dimension time overlaps file
             errorCode = err[errstart:min(err1,err2,err3,err4,err5)]
             fileWarning = True
+        elif err.find(''.join(['Variable \'',variable,'\' is duplicated'])) > -1:
+            err6Str = ''.join(['Variable \'',variable,'\' is duplicated'])
+            errstart = err.find(err6Str)
+            errorCode = err[errstart:len(err)-1] ; # Problem 4 - cdscan error - 'Variable \'%s\' is duplicated - RunTimeError
+            #fileWarning = True ; # Not set to true as no file is generated - so caught by fileNoWrite below
         else:
             errorCode = ''
         #if err.find
