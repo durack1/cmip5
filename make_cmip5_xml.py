@@ -816,7 +816,7 @@ for count,testfile in enumerate(outfiles):
 #%% Check whether running for file reporting or xml generation:
 if make_xml:
     # Check to ensure previous xml creation run has successfully completed or terminated
-    logFiles = glob.glob(os.path.join(log_path,'*.log.gz')) ; logFiles.sort()
+    logFiles = glob.glob(os.path.join(log_path,'*.log*')) ; logFiles.sort()
     logCount = len(logFiles)-1
     # First check current process is running
     logFile = logFiles[logCount]
