@@ -829,11 +829,11 @@ if make_xml:
         logCount = logCount-1 ; # decrement count by 1
     else:
         pass
-    
+
     # Check previous process existence - assumes no 'test' logs have been created
     logFile = logFiles[logCount]
     PID = logFile.split('-')
-    PID = replace(PID[-1].split('.')[-3],'PID','')    
+    PID = replace(PID[-1].split('.')[-3],'PID','')
     if checkPID(PID):
         reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') still active, terminating current process **'])
         print reportStr
@@ -842,7 +842,7 @@ if make_xml:
     else:
         reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') not found, continuing current process **'])
         print reportStr
-        writeToLog(logfile,reportStr)        
+        writeToLog(logfile,reportStr)
 
     del(logFiles,logCount,logFile,PID,reportStr) ; gc.collect()
 
@@ -1014,7 +1014,7 @@ if make_xml:
     else:
         print "".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **'])
         writeToLog(logfile,"".join(['** XML count too low: ',format(xmlGood-1,"1d") ,', archival, purging and migration halted **']))
-    
+
     # Run complete, now compress logfile
     fIn = open(logfile, 'rb')
     gzfile = replace(logfile,'.log','.log.gz')
