@@ -69,6 +69,7 @@ PJD 17 Jul 2015     - Converted diagnostic file to be written using cPickle and 
 PJD 18 Nov 2015     - Updated xmlWrite to correctly report 'Variable \'%s\' is duplicated - RunTimeError
 PJD 18 Nov 2015     - Updated to include all energy budget terms (LImon table added)
 PJD 18 Nov 2015     - Updated to resolve log and cpkl file extensions and containers
+PJD 24 Nov 2015     - Added sys.executable to log/stdout diagnostics
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -604,6 +605,8 @@ out,err = p.communicate()
 writeToLog(logfile,"".join(['TIME: ',time_format]))
 writeToLog(logfile,"".join(['MASTER PID: ',pypid]))
 print "".join(['master pid',pypid]) ; # Write master PID to sendmail/stdout
+writeToLog(logfile,"".join(['UV-CDAT: ',sys.executable]))
+print "".join(['UV-CDAT: ',sys.executable]) ; # Write UV-CDAT/python path to sendmail/stdout
 writeToLog(logfile,"".join(['HOSTNAME: ',host_name]))
 writeToLog(logfile,"".join(['FUNCTION: ','scandir.walk']))
 writeToLog(logfile,"".join(['SOURCEFILES:\n',out]))
