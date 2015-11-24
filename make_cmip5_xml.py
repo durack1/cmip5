@@ -824,7 +824,7 @@ if make_xml:
     if PID[-1].split('.')[-1] == 'gz':
         extIndex = -3
     else:
-        extIndex = -2        
+        extIndex = -2
     PID = replace(PID[-1].split('.')[extIndex],'PID','')
     if checkPID(PID):
         reportStr = ''.join(['** make_cmip5_xml.py run (PID: ',str(PID),') starting, querying for existing previous process **'])
@@ -837,6 +837,10 @@ if make_xml:
     # Check previous process existence - assumes no 'test' logs have been created
     logFile = logFiles[logCount]
     PID = logFile.split('-')
+    if PID[-1].split('.')[-1] == 'gz':
+        extIndex = -3
+    else:
+        extIndex = -2
     PID = replace(PID[-1].split('.')[extIndex],'PID','')
     if checkPID(PID):
         reportStr = ''.join(['** previous make_cmip5_xml.py run (PID: ',str(PID),') still active, terminating current process **'])
