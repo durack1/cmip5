@@ -70,6 +70,7 @@ PJD 18 Nov 2015     - Updated xmlWrite to correctly report 'Variable \'%s\' is d
 PJD 18 Nov 2015     - Updated to include all energy budget terms (LImon table added)
 PJD 18 Nov 2015     - Updated to resolve log and cpkl file extensions and containers
 PJD 24 Nov 2015     - Added sys.executable to log/stdout diagnostics
+PJD 11 Jan 2016     - Added mrso and additional fx and Lmon variables to variable lists (Gemma A requested)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -188,8 +189,8 @@ def pathToFile(inpath,start_time,queue1):
                        'hus','huss','mc','pr','prc','prsn','prw','ps','psl','rlds','rldscs','rlus','rluscs','rlut',
                        'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
                        'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
-    fx_vars         = ['areacella','areacello','basin','deptho','orog','sftlf','sftof','volcello'] ; fx_vars.sort()
-    land_vars       = ['mrro','mrros','tsl'] ; land_vars.sort()
+    fx_vars         = ['areacella','areacello','basin','deptho','mrsofc','orog','sftgif','sftlf','sftof','volcello'] ; fx_vars.sort()
+    land_vars       = ['mrfso', 'mrro', 'mrros', 'mrso', 'mrsos', 'tsl'] ; land_vars.sort()
     ocn_vars        = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
                        'rhopoto','rsds','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
                        'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
