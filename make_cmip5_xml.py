@@ -190,6 +190,7 @@ def pathToFile(inpath,start_time,queue1):
                        'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
                        'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
     fx_vars         = ['areacella','areacello','basin','deptho','mrsofc','orog','sftgif','sftlf','sftof','volcello'] ; fx_vars.sort()
+    land_vars       = ['cropfrac','evspsblsoi','evspsblveg','lai','mrfso','mrro','mrros','mrso','mrsos','tran','tsl'] ; land_vars.sort()
     land_vars       = ['mrfso', 'mrro', 'mrros', 'mrso', 'mrsos', 'tsl'] ; land_vars.sort()
     ocn_vars        = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
                        'rhopoto','rsds','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
