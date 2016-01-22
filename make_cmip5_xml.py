@@ -71,6 +71,9 @@ PJD 18 Nov 2015     - Updated to include all energy budget terms (LImon table ad
 PJD 18 Nov 2015     - Updated to resolve log and cpkl file extensions and containers
 PJD 24 Nov 2015     - Added sys.executable to log/stdout diagnostics
 PJD 11 Jan 2016     - Added mrso and additional fx and Lmon variables to variable lists (Gemma A requested)
+PJD 22 Jan 2016     - Added cropfrac and additional Lmon variables to variable lists (Celine B requested)
+PJD 22 Jan 2016     - Updated fx_vars declaration in xmlWrite function (need to better define this globally as it's independently
+                      defined in both pathToFile and xmlWrite functions)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -190,7 +193,7 @@ def pathToFile(inpath,start_time,queue1):
                        'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
                        'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
     fx_vars         = ['areacella','areacello','basin','deptho','mrsofc','orog','sftgif','sftlf','sftof','volcello'] ; fx_vars.sort()
-    land_vars       = ['mrfso', 'mrro', 'mrros', 'mrso', 'mrsos', 'tsl'] ; land_vars.sort()
+    land_vars       = ['cropfrac','evspsblsoi','evspsblveg','lai','mrfso','mrro','mrros','mrso','mrsos','tran','tsl'] ; land_vars.sort()
     ocn_vars        = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
                        'rhopoto','rsds','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
                        'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
@@ -449,7 +452,7 @@ def xmlLog(logFile,fileZero,fileWarning,fileNoWrite,fileNoRead,fileNone,errorCod
 def xmlWrite(inpath,outfile,host_path,cdat_path,start_time,queue1):
     infilenames = glob.glob(os.path.join(inpath,'*.nc'))
     # Create list of fx vars
-    fx_vars = ['areacello','basin','deptho','sftof','volcello','areacella','orog','sftlf'] ; fx_vars.sort()
+    fx_vars = ['areacella','areacello','basin','deptho','mrsofc','orog','sftgif','sftlf','sftof','volcello'] ; fx_vars.sort()
     # Construct outfile path from outfilename
     outfile_string  = "".join(outfile)
     outfile_bits    = outfile_string.split('.')
