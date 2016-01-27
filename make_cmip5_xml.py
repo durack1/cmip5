@@ -74,6 +74,7 @@ PJD 11 Jan 2016     - Added mrso and additional fx and Lmon variables to variabl
 PJD 22 Jan 2016     - Added cropfrac and additional Lmon variables to variable lists (Celine B requested)
 PJD 22 Jan 2016     - Updated fx_vars declaration in xmlWrite function (need to better define this globally as it's independently
                       defined in both pathToFile and xmlWrite functions)
+PJD 26 Jan 2016     - Added sstClim and sstClim4xCO2 plus gpp to experiment/variable lists (Celine B requested)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -147,7 +148,7 @@ def pathToFile(inpath,start_time,queue1):
         ## IGNORE EXPERIMENTS - AT SEARCH LEVEL - SPEED UP SEARCH ##
         expExclude = set(['aqua4K','aqua4xCO2','aquaControl','esmControl','esmFdbk1','esmFixClim1',
                           'esmFixClim2','esmHistorical','esmrcp85','Igm','midHolocene','sst2030','sst2090','sst2090rcp45',
-                          'sstClim','sstClim4xCO2','sstClimAerosol','sstClimSulfate','volcIn2010'])
+                          'sstClimAerosol','sstClimSulfate','volcIn2010'])
         timeExclude = set(['3hr','6hr','day','monClim','yr'])
         reDec = re.compile(r'decadal[0-9]{4}')
         reVol = re.compile(r'noVolc[0-9]{4}')
@@ -185,7 +186,8 @@ def pathToFile(inpath,start_time,queue1):
 
     # Create variable and realm names
     experiments     = ['1pctCO2','abrupt4xCO2','amip','amip4K','amip4xCO2','amipFuture','historical','historicalExt',
-                       'historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85'] ; experiments.sort()
+                       'historicalGHG','historicalMisc','historicalNat','past1000','piControl','rcp26','rcp45','rcp60','rcp85',
+                       'sstClim','sstClim4xCO2'] ; experiments.sort()
     temporal        = ['fx','mon'] ; # For months and fixed fields only
     atmOrocn        = ['atm','ocn'] ; atmOrocn.sort()
     atm_vars        = ['cl','clcalipso','cli','clisccp','clivi','clt','clw','clwvi','evspsbl','hfls','hfss','hur','hurs',
@@ -193,7 +195,7 @@ def pathToFile(inpath,start_time,queue1):
                        'rlutcs','rsds','rsdscs','rsdt','rsus','rsuscs','rsut','rsutcs','sbl','sci','sfcWind',
                        'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
     fx_vars         = ['areacella','areacello','basin','deptho','mrsofc','orog','sftgif','sftlf','sftof','volcello'] ; fx_vars.sort()
-    land_vars       = ['cropfrac','evspsblsoi','evspsblveg','lai','mrfso','mrro','mrros','mrso','mrsos','tran','tsl'] ; land_vars.sort()
+    land_vars       = ['cropfrac','evspsblsoi','evspsblveg','gpp','lai','mrfso','mrro','mrros','mrso','mrsos','tran','tsl'] ; land_vars.sort()
     ocn_vars        = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
                        'rhopoto','rsds','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
                        'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
