@@ -880,6 +880,10 @@ if make_xml:
     fnull = open(os.devnull,'w')
     p = call(cmd,stdout=fnull,shell=True)
     fnull.close()
+    cmd = "".join(['rm -rf ',host_path,'*/*/fx_new']) ; # Cleanup issues with invalid fx_var entries
+    fnull = open(os.devnull,'w')
+    p = call(cmd,stdout=fnull,shell=True)
+    fnull.close()
     print "** Generating new *.xml files **"
     writeToLog(logfile,"** Generating new *.xml files **")
     i = 0
