@@ -65,6 +65,7 @@ PJD 12 Jun 2013     - Added MPI-ESM-MR.historical.r2/3
 PJD 12 Sep 2013     - Added shebang
 PJD 12 Sep 2013     - Replaced log writes with writeToLog function
 PJD 31 Mar 2014     - Added historicalNat to experiment list
+PJD 10 Apr 2016     - Removed Spyder cleanup statements
                     - TODO: Hunt down issue with incorrect branch_time reported for bcc-csm1-1-m.r1i1p1.1pctCO2 - reported 160-1-1 should be 240-1-1
                     - TODO: piControl_info isn't saving correct start years IPSL-CM5A-LR.historical.r1i1p1 reports 2370 not 1850
                     - TODO: lost branch_time difference reporting (121009_* file) smaller when compared to 121024_* although
@@ -76,9 +77,6 @@ PJD 31 Mar 2014     - Added historicalNat to experiment list
 
 @author: durack1
 """
-
-if 'e' in locals():
-    del(e,pi,sctypeNA,typeNA) ; # Purge spyder variables
 
 import datetime,gc,os,re,pickle,sys
 import cdms2 as cdms
