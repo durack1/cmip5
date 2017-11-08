@@ -75,6 +75,7 @@ PJD 22 Jan 2016     - Added cropfrac and additional Lmon variables to variable l
 PJD 22 Jan 2016     - Updated fx_vars declaration in xmlWrite function (need to better define this globally as it's independently
                       defined in both pathToFile and xmlWrite functions)
 PJD 26 Jan 2016     - Added sstClim and sstClim4xCO2 plus gpp to experiment/variable lists (Celine B requested)
+PJD  8 Nov 2017     - Added dissic, ph to variable lists (Steve P requested)
 
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
@@ -196,7 +197,7 @@ def pathToFile(inpath,start_time,queue1):
                        'ta','tas','tasmax','tasmin','tauu','tauv','ts','ua','uas','va','vas','wap','zg'] ; atm_vars.sort()
     fx_vars         = ['areacella','areacello','basin','deptho','mrsofc','orog','sftgif','sftlf','sftof','volcello'] ; fx_vars.sort()
     land_vars       = ['cropfrac','evspsblsoi','evspsblveg','gpp','lai','mrfso','mrro','mrros','mrso','mrsos','tran','tsl'] ; land_vars.sort()
-    ocn_vars        = ['agessc','cfc11','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','pr','rlds',
+    ocn_vars        = ['agessc','cfc11','dissic','evs','ficeberg','friver','hfds','hfls','hfss','mfo','mlotst','omlmax','ph','pr','rlds',
                        'rhopoto','rsds','sfriver','so','soga','sos','tauuo','tauvo','thetao','thetaoga','tos','uo','vo','vsf','vsfcorr',
                        'vsfevap','vsfpr','vsfriver','wfo','wfonocorr','zos','zostoga'] ; ocn_vars.sort()
     seaIce_vars     = ['sic','sim','sit','snc','snd'] ; seaIce_vars.sort()
