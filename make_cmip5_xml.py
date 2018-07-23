@@ -77,7 +77,7 @@ PJD 22 Jan 2016     - Updated fx_vars declaration in xmlWrite function (need to 
 PJD 26 Jan 2016     - Added sstClim and sstClim4xCO2 plus gpp to experiment/variable lists (Celine B requested)
 PJD  8 Nov 2017     - Added dissic, ph to variable lists (Steve P requested)
 PJD  8 Nov 2017     - Added durolib path append
-
+PJD 23 Jul 2018     - Fix issue with python2.7.15 and poorly formed dictionaries for masterDnodes and modelInstituteMap variables
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
@@ -107,7 +107,7 @@ PJD  8 Nov 2017     - Added durolib path append
 
 import argparse,cPickle,datetime,gc,glob,gzip,os,re,shlex,sys,time
 import scandir ; # Installed locally on oceanonly and crunchy
-sys.path.append('/export/durack1/git/durolib/lib/')
+sys.path.insert(0,'/export/durack1/git/durolib/lib/')
 from durolib import mkDirNoOSErr,writeToLog #sysCallTimeout
 from multiprocessing import Process,Manager
 from socket import gethostname
@@ -353,20 +353,20 @@ def testLatest(tracking_id,creation_date):
         'NSF-DOE-NCAR':('tds.ucar.edu', 'esg-datanode.jpl.nasa.gov'),
     }
     masterDnodes = {
-        'adm07.cmcc.it',
-        'esg-datanode.jpl.nasa.gov',
-        'esg2.nci.org.au',
-        'esgf-data.dkrz.de',
-        'esgf-index1.ceda.ac.uk',
-        'esgf-node.ipsl.fr',
-        'esgf.nccs.nasa.gov',
-        'pcmdi9.llnl.gov',
+        'adm07.cmcc.it':'',
+        'esg-datanode.jpl.nasa.gov':'',
+        'esg2.nci.org.au':'',
+        'esgf-data.dkrz.de':'',
+        'esgf-index1.ceda.ac.uk':'',
+        'esgf-node.ipsl.fr':'',
+        'esgf.nccs.nasa.gov':'',
+        'pcmdi9.llnl.gov':'',
     }
     modelInstituteMap = {
-        'access1-0','CSIRO-BOM',
-        'access1-3','CSIRO-BOM',
-        'bcc-csm1-1','BCC',
-        'noresm-l','NCC',
+        'access1-0':'CSIRO-BOM',
+        'access1-3':'CSIRO-BOM',
+        'bcc-csm1-1':'BCC',
+        'noresm-l':'NCC',
     }
     #cmd = ''.join(['/work/durack1/Shared/cmip5/esgquery_index.py --type f -t tracking_id:',tracking_id,' -q latest=true --fields latest'])
     # try esgquery_index --type f -t tracking_id='tracking_id',latest=true,index_node='index_node' ; # Uncertain if index_node is available
