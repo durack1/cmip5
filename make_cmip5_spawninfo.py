@@ -66,6 +66,7 @@ PJD 12 Sep 2013     - Added shebang
 PJD 12 Sep 2013     - Replaced log writes with writeToLog function
 PJD 31 Mar 2014     - Added historicalNat to experiment list
 PJD 10 Apr 2016     - Removed Spyder cleanup statements
+PJD 25 Jul 2018     - Added durolib to path; updated cdat_path reference
                     - TODO: Hunt down issue with incorrect branch_time reported for bcc-csm1-1-m.r1i1p1.1pctCO2 - reported 160-1-1 should be 240-1-1
                     - TODO: piControl_info isn't saving correct start years IPSL-CM5A-LR.historical.r1i1p1 reports 2370 not 1850
                     - TODO: lost branch_time difference reporting (121009_* file) smaller when compared to 121024_* although
@@ -80,6 +81,7 @@ PJD 10 Apr 2016     - Removed Spyder cleanup statements
 
 import datetime,gc,os,re,pickle,sys
 import cdms2 as cdms
+sys.path.append('/export/durack1/git/durolib/lib/')
 from durolib import writeToLog
 from collections import OrderedDict
 from numpy import mod
@@ -92,7 +94,7 @@ host_name = gethostname()
 if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
     trim_host = replace(host_name,'.llnl.gov','')
     host_path = '/work/durack1/Shared/cmip5/' ; # an mean files
-    cdat_path = '/usr/local/uvcdat/latest/bin/'
+    cdat_path = '/export/durack1/anaconda2/envs/cdat80py2/bin/'
 else:
     print '** HOST UNKNOWN, aborting.. **'
     sys.exit()
@@ -225,7 +227,7 @@ valid = [
         ['FGOALS-s2.historical.r1i1p1',         '1853-7-25 0:0:0.0',1300,1853,'piControl.r1i1p1','Gleckler'],
         ['FGOALS-s2.historical.r2i1p1',         '1853-8-4 0:0:0.0',1310,'','piControl.r1i1p1','Gleckler'],
         ['FGOALS-s2.historical.r3i1p1',         '1853-8-14 0:0:0.0',1320,'','piControl.r1i1p1','Gleckler'],
-        ['FIO-ESM.historical.r1i1p1',           '0701-1-1 0:0:0.0','','','piControl.r1i1p1',''],        
+        ['FIO-ESM.historical.r1i1p1',           '0701-1-1 0:0:0.0','','','piControl.r1i1p1',''],
         ['FIO-ESM.historical.r2i1p1',           '0651-1-1 0:0:0.0','','','piControl.r1i1p1',''],
         ['FIO-ESM.historical.r3i1p1',           '0401-1-1 0:0:0.0','','','piControl.r1i1p1','Gleckler'],
         ['GFDL-CM3.historical.r1i1p1',          '0001-1-1 0:0:0.0',0,'','piControl.r1i1p1','Gleckler'],
@@ -408,12 +410,12 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
     count = count + 1
     if '.directory' in file1:
         continue
-    
+
     # Open file
     f = cdms.open(file1)
     filename = file1.split('/')[-1]
     filename_trim = filename[6:(filename.index('.an.'))]
-    
+
     # Test for model change
     if (filename_trim_1 == ''):
         writelog = False
@@ -430,7 +432,7 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
                                     branch_time_valid,delim,greg_year,delim,str(piC_startyr),delim,str(piC_endyr),delim,
                                     parent_experiment_id,delim,parent_experiment_rip]))
         writelog = False ; # Reset
-    
+
     # Write header info
     header2 = "".join(['## ',file1.split('/')[5],' ##'])
     if 'header1' not in locals():
@@ -441,7 +443,7 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
         header1 = "".join(['## ',file1.split('/')[5],' ##'])
         writeToLog(logfile,header1)
         writeToLog(logfile,header)
-    
+
     # Read attributes and create variables
     try:
         branch_time = str(int(float(f.branch_time.squeeze())))
@@ -449,11 +451,11 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
         branch_time = str(int(float(f.branch_time)))
     creation_date           = f.creation_date
     experiment_id           = f.experiment_id ; # Also experiment variable
-    parent_experiment_id    = f.parent_experiment_id ; # Also parent_experiment variable 
+    parent_experiment_id    = f.parent_experiment_id ; # Also parent_experiment variable
     realization             = str(f.realization[0])
     time_units              = f.getdimensionunits('time')
     tracking_id             = f.tracking_id
-    
+
     # If branch_time is same for multiple variables only list first instance
     yearfirst   = int(filename.split('.')[-2].split('-')[0])
     yearlast    = int(filename.split('.')[-2].split('-')[-1])
@@ -465,7 +467,7 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
         firstyear = min(yearfirst,yearfirst_1)
     # Last
     if yearlast_1 == '':
-        lastyear            = yearlast  
+        lastyear            = yearlast
     elif (filename_trim == filename_trim_1) and (yearlast != yearlast_1):
         lastyear            = max(yearlast,yearlast_1)
     if (filename_trim != filename_trim_1):
@@ -474,8 +476,8 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
         branch_time_comp2   = 'BLANK'
     # After checking reset test variables
     yearfirst_1 = firstyear
-    yearlast_1  = lastyear        
- 
+    yearlast_1  = lastyear
+
     # Test branch_times
     if (filename_trim == filename_trim_1) and (branch_time == branch_time_1):
         f.close()
@@ -489,7 +491,7 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
     filename_trim_1 = filename[6:(filename.index('.an.'))]
     branch_time_1 = branch_time
     branch_time_valid = 'BLANK'
-    
+
     # Attempt conditional reads
     # Calendar
     try:
@@ -500,12 +502,12 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
         parent_experiment_rip = f.parent_experiment_rip
     except:
         parent_experiment_rip = 'BLANK'
-    
-    # Process other global attributes        
+
+    # Process other global attributes
     for tmp in f.contact.split():
         if '@' in tmp:
             contact = tmp ; # Return last email address
-            # Cleanup resulting email addresses            
+            # Cleanup resulting email addresses
             contact = re.sub(':','',re.sub('\(','',re.sub('\)','',re.sub(',','',contact))))
             contact = re.sub('McKinstry<','',re.sub('>','',contact)) ; # Case EC-EARTH
             contact = re.sub('INM','',contact) ; # Case INMCM4
@@ -597,7 +599,7 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
     # Create to save log error
     if 'branch_time_comp2' not in locals():
         branch_time_comp2 = 'BLANK'
-        
+
     # Create branch_time_validated variable
     if experiment_id == 'historical':
         print "enter branch_time_valid.."
@@ -610,7 +612,7 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
     else:
         branch_time_valid = "BLANK"
     print "".join(["branch_time_valid test: ",branch_time_valid])
-        
+
     f.close()
 
     # Clean up
@@ -623,8 +625,8 @@ if 'branch_time_comp' in locals():
         filename_pad,parent_experiment_id,parent_experiment_rip,realization,time_units,tmp,tracking_id,yearfirst,yearlast)
 if 'ind' in locals():
     del(branch_time_1,count,delim,ind,header,header1,header2)
-'''    
-    
+'''
+
 """
 branch_time,branch_time_YMDH (YYYYMMDDHHMMSS)
 calendar
