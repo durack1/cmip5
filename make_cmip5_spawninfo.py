@@ -67,6 +67,7 @@ PJD 12 Sep 2013     - Replaced log writes with writeToLog function
 PJD 31 Mar 2014     - Added historicalNat to experiment list
 PJD 10 Apr 2016     - Removed Spyder cleanup statements
 PJD 25 Jul 2018     - Added durolib to path; updated cdat_path reference
+PJD 25 Jul 2018     - Deal with time axis issue CESM1-CAM5-1-FV2.piControl.r1i1p1
                     - TODO: Hunt down issue with incorrect branch_time reported for bcc-csm1-1-m.r1i1p1.1pctCO2 - reported 160-1-1 should be 240-1-1
                     - TODO: piControl_info isn't saving correct start years IPSL-CM5A-LR.historical.r1i1p1 reports 2370 not 1850
                     - TODO: lost branch_time difference reporting (121009_* file) smaller when compared to 121024_* although
@@ -79,7 +80,7 @@ PJD 25 Jul 2018     - Added durolib to path; updated cdat_path reference
 @author: durack1
 """
 
-import datetime,gc,os,re,pickle,sys
+import datetime,gc,os,pdb,re,pickle,sys
 import cdms2 as cdms
 sys.path.append('/export/durack1/git/durolib/lib/')
 from durolib import writeToLog
@@ -581,7 +582,14 @@ for file1 in data_paths: #[0:5200]: # 130103 9877 first rcp26 file ; 130114 9748
                 #print "".join([piFilename[pInd[0]+1:pInd[3]],' ',"".join(map(str,piFileTUnits))])
                 tmp.units = piFileTUnits
                 tmp.calendar = piFile[3]
-                branch_time_comp1 = "".join(map(str,tmp.asComponentTime()))
+                try:
+                    branch_time_comp1 = "".join(map(str,tmp.asComponentTime()))
+                except:
+                    print 'erroneous file:',file1
+                    #pdb.set_trace()
+                    if tmp.units == 'days since 0000-01-01 00:00:00':
+                        tmp.units = 'days since 0001-01-01 00:00:00'
+                        print 'Fixing time.units to days since 0001-01-01 00:00:00 - offset by 1 year'
                 #print "".join([piControl_search,' ',branch_time_comp]) ; print '-----'
                 piC_startyr = piFile[5]
                 piC_endyr = piFile[6]
