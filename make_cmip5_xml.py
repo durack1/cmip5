@@ -78,6 +78,7 @@ PJD 26 Jan 2016     - Added sstClim and sstClim4xCO2 plus gpp to experiment/vari
 PJD  8 Nov 2017     - Added dissic, ph to variable lists (Steve P requested)
 PJD  8 Nov 2017     - Added durolib path append
 PJD 23 Jul 2018     - Fix issue with python2.7.15 and poorly formed dictionaries for masterDnodes and modelInstituteMap variables
+PJD 27 Jul 2018     - Updated dict format to list python2.7.15
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
@@ -585,7 +586,7 @@ else:
 
 # Set directories
 host_name = gethostname()
-if host_name in {'crunchy.llnl.gov','oceanonly.llnl.gov'}:
+if host_name in ['crunchy.llnl.gov','oceanonly.llnl.gov']:
     trim_host = replace(host_name,'.llnl.gov','')
     if batch:
         host_path = '/work/cmip5/' ; # BATCH MODE - oceanonly 130605
