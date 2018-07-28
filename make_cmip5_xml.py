@@ -79,6 +79,7 @@ PJD  8 Nov 2017     - Added dissic, ph to variable lists (Steve P requested)
 PJD  8 Nov 2017     - Added durolib path append
 PJD 23 Jul 2018     - Fix issue with python2.7.15 and poorly formed dictionaries for masterDnodes and modelInstituteMap variables
 PJD 27 Jul 2018     - Updated dict format to list python2.7.15
+PJD 27 Jul 2018     - Update cdat_path to latest conda env
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
@@ -594,7 +595,7 @@ if host_name in ['crunchy.llnl.gov','oceanonly.llnl.gov']:
     else:
         host_path = '/work/durack1/Shared/cmip5/tmp/' ; # WORK_MODE_TEST - oceanonly 130605 #TEST#
         log_path = host_path
-    cdat_path = '/usr/local/uvcdat/latest/bin/'
+    cdat_path = '/export/durack1/anaconda2/envs/cdat80py2/bin/' ; #'/usr/local/uvcdat/latest/bin/'
 else:
     print '** HOST UNKNOWN, aborting.. **'
     sys.exit()
