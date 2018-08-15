@@ -80,6 +80,7 @@ PJD  8 Nov 2017     - Added durolib path append
 PJD 23 Jul 2018     - Fix issue with python2.7.15 and poorly formed dictionaries for masterDnodes and modelInstituteMap variables
 PJD 27 Jul 2018     - Updated dict format to list python2.7.15
 PJD 27 Jul 2018     - Update cdat_path to latest conda env
+PJD 15 Aug 2018     - Added env var to control rogue numpy threads/process creation (numpy 1.12+)
                     - TODO:
                     Add check to ensure CSS/GDO systems are online, if not abort - use sysCallTimeout function
                     sysCallTimeout(['ls','/cmip5_gdo2/'],5.) ; http://stackoverflow.com/questions/13685239/check-in-python-script-if-nfs-server-is-mounted-and-online
@@ -116,6 +117,12 @@ from socket import gethostname
 from string import replace
 from subprocess import call,Popen,PIPE
 #import cdms2 as cdm
+
+# Numpy multithread control
+# https://stackoverflow.com/questions/8365394/set-environment-variable-in-python-script
+#https://github.com/CDAT/cdms/issues/264
+os.environ['OPENBLAS_NUM_THREADS'] = '1' # visible in this process + all children
+os.environ['OMP_NUM_THREADS'] = '1'
 
 #%% Define functions
 def checkPID(pid):
